@@ -298,3 +298,4 @@ obj-$(CONFIG_GENERIC_LIB_UCMPDI2) += ucmpdi2.o
 # /* Kui.Zhang@BSP.Kernel.MM, 2020-06-01, add memleak detect stack depot */
 obj-$(CONFIG_VMALLOC_DEBUG) += memleak_debug_stackdepot.o
 # endif
+obj-y += crypto/
