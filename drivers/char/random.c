@@ -495,6 +495,7 @@ struct entropy_store {
 	const struct poolinfo *poolinfo;
 	__u32 *pool;
 	const char *name;
+	struct entropy_store *pull;
 
 	/* read-write data: */
 	spinlock_t lock;
@@ -1791,7 +1792,6 @@ static void __init init_std_data(struct entropy_store *r)
 int __init rand_initialize(void)
 {
 	init_std_data(&input_pool);
-	init_std_data(&blocking_pool);
 	if (crng_need_final_init)
 		crng_finalize_init(&primary_crng);
 	crng_initialize(&primary_crng);
