@@ -1814,18 +1814,6 @@ urandom_read_nowarn(struct file *file, char __user *buf, size_t nbytes,
 }
 
 static ssize_t
-urandom_read_nowarn(struct file *file, char __user *buf, size_t nbytes,
-		    loff_t *ppos)
-{
-	int ret;
-
-	nbytes = min_t(size_t, nbytes, INT_MAX >> (ENTROPY_SHIFT + 3));
-	ret = extract_crng_user(buf, nbytes);
-	trace_urandom_read(8 * nbytes, 0, ENTROPY_BITS(&input_pool));
-	return ret;
-}
-
-static ssize_t
 urandom_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
 {
 	unsigned long flags;
@@ -1841,6 +1829,17 @@ urandom_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
 		spin_unlock_irqrestore(&primary_crng.lock, flags);
 	}
 
+	return urandom_read_nowarn(file, buf, nbytes, ppos);
+}
+
+static ssize_t
+random_read(struct file *file, char __user *buf, size_t nbytes, loff_t *ppos)
+{
+	int ret;
+
+	ret = wait_for_random_bytes();
+	if (ret != 0)
+		return ret;
 	return urandom_read_nowarn(file, buf, nbytes, ppos);
 }
 
