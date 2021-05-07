@@ -84,8 +84,9 @@ static size_t depot_offset;
 static DEFINE_SPINLOCK(depot_lock);
 #ifdef CONFIG_PAGE_OWNER
 static struct stack_record *max_found;
-static DEFINE_SPINLOCK(max_found_lock);
+static DEFINE_RAW_SPINLOCK(depot_lock);
 #endif
+
 
 
 static bool init_stack_slab(void **prealloc)
@@ -314,7 +315,7 @@ depot_stack_handle_t depot_save_stack(struct stack_trace *trace,
 			prealloc = page_address(page);
 	}
 
-	spin_lock_irqsave(&depot_lock, flags);
+	raw_spin_lock_irqsave(&depot_lock, flags);
 
 	found = find_stack(*bucket, trace->entries, trace->nr_entries, hash);
 	if (!found) {
@@ -338,7 +339,7 @@ depot_stack_handle_t depot_save_stack(struct stack_trace *trace,
 		WARN_ON(!init_stack_slab(&prealloc));
 	}
 
-	spin_unlock_irqrestore(&depot_lock, flags);
+	raw_spin_unlock_irqrestore(&depot_lock, flags);
 exit:
 	if (prealloc) {
 		/* Nobody used this memory, ok to free it. */
