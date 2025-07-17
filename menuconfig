@@ -1,0 +1,4 @@
+DEF=endfield_defconfig
+
+make CC=clang ARCH=arm64 O=out $DEF nconfig
+mv out/.config arch/arm64/configs/$DEF
