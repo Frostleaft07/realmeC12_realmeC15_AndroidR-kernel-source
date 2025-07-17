@@ -42,6 +42,36 @@ static int is_activesync(struct usb_interface_descriptor *desc)
 		&& desc->bInterfaceProtocol == 1;
 }
 
+static int get_usb_audio_config(struct usb_host_bos *bos)
+{
+	unsigned int desc_cnt, num_cfg_desc, len = 0;
+	unsigned char *buffer;
+	struct usb_config_summary_descriptor *conf_summary;
+
+	if (!bos || !bos->config_summary)
+		goto done;
+
+	num_cfg_desc = bos->num_config_summary_desc;
+	conf_summary = bos->config_summary;
+	buffer = (unsigned char *)conf_summary;
+	for (desc_cnt = 0; desc_cnt < num_cfg_desc; desc_cnt++) {
+		conf_summary =
+			(struct usb_config_summary_descriptor *)(buffer + len);
+
+		len += conf_summary->bLength;
+
+		if (conf_summary->bcdVersion != USB_CONFIG_SUMMARY_DESC_REV ||
+				conf_summary->bClass != USB_CLASS_AUDIO)
+			continue;
+
+		/* return 1st config as per device preference */
+		return conf_summary->bConfigurationIndex[0];
+	}
+
+done:
+	return -EINVAL;
+}
+
 int usb_choose_configuration(struct usb_device *udev)
 {
 	int i;
@@ -102,9 +132,17 @@ int usb_choose_configuration(struct usb_device *udev)
 		 */
 
 		/* Rule out configs that draw too much bus current */
+#ifdef VENDOR_EDIT
+/* lizhijie@BSP.CHG.Basic, 2019/11/23, lzj Add for Apple USB-C switch */
+		pr_info("usb_choose_configuration max_power %u, bus_mA %u \n",
+			usb_get_max_power(udev, c), udev->bus_mA);
+#endif
 		if (usb_get_max_power(udev, c) > udev->bus_mA) {
+#ifndef VENDOR_EDIT
+/* lizhijie@BSP.CHG.Basic, 2019/11/23, lzj Delete for Apple USB-C switch */
 			insufficient_power++;
 			continue;
+#endif
 		}
 
 		/* When the first config's first interface is one of Microsoft's
@@ -145,7 +183,10 @@ int usb_choose_configuration(struct usb_device *udev)
 			insufficient_power, plural(insufficient_power));
 
 	if (best) {
-		i = best->desc.bConfigurationValue;
+		/* choose device preferred config */
+		i = get_usb_audio_config(udev->bos);
+		if (i < 0)
+			i = best->desc.bConfigurationValue;
 		dev_dbg(&udev->dev,
 			"configuration #%d chosen from %d choice%s\n",
 			i, num_configs, plural(num_configs));

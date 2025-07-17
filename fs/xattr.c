@@ -130,7 +130,7 @@ xattr_permission(struct inode *inode, const char *name, int mask)
 			return -EPERM;
 	}
 
-	return inode_permission(inode, mask);
+	return inode_permission2(ERR_PTR(-EOPNOTSUPP), inode, mask);
 }
 
 int
@@ -228,7 +228,11 @@ out:
 }
 EXPORT_SYMBOL_GPL(vfs_setxattr);
 
-static ssize_t
+#ifndef OPLUS_FEATURE_SDCARDFS_SUPPORT
+//huyu@BSP.Storage.Sdcard, 2020/4/8 add for export this api for sdcardfs use
+static
+#endif
+ssize_t
 xattr_getsecurity(struct inode *inode, const char *name, void *value,
 			size_t size)
 {
@@ -253,7 +257,10 @@ out:
 out_noalloc:
 	return len;
 }
-
+#ifdef OPLUS_FEATURE_SDCARDFS_SUPPORT
+//huyu@BSP.Storage.Sdcard, 2020/4/8 add for export this api for sdcardfs use
+EXPORT_SYMBOL_GPL(xattr_getsecurity);
+#endif
 /*
  * vfs_getxattr_alloc - allocate memory, if necessary, before calling getxattr
  *
@@ -305,6 +312,9 @@ __vfs_getxattr(struct dentry *dentry, struct inode *inode, const char *name,
 	handler = xattr_resolve_name(inode, &name);
 	if (IS_ERR(handler))
 		return PTR_ERR(handler);
+	if (unlikely(handler->__get))
+		return handler->__get(handler, dentry, inode, name, value,
+				      size);
 	if (!handler->get)
 		return -EOPNOTSUPP;
 	return handler->get(handler, dentry, inode, name, value, size);
@@ -316,6 +326,7 @@ vfs_getxattr(struct dentry *dentry, const char *name, void *value, size_t size)
 {
 	struct inode *inode = dentry->d_inode;
 	int error;
+	const struct xattr_handler *handler;
 
 	error = xattr_permission(inode, name, MAY_READ);
 	if (error)
@@ -338,7 +349,12 @@ vfs_getxattr(struct dentry *dentry, const char *name, void *value, size_t size)
 		return ret;
 	}
 nolsm:
-	return __vfs_getxattr(dentry, inode, name, value, size);
+	handler = xattr_resolve_name(inode, &name);
+	if (IS_ERR(handler))
+		return PTR_ERR(handler);
+	if (!handler->get)
+		return -EOPNOTSUPP;
+	return handler->get(handler, dentry, inode, name, value, size);
 }
 EXPORT_SYMBOL_GPL(vfs_getxattr);
 

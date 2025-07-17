@@ -265,21 +265,49 @@ int __scsi_execute(struct scsi_device *sdev, const unsigned char *cmd,
 	struct scsi_request *rq;
 	int ret = DRIVER_ERROR << 24;
 
-	req = blk_get_request(sdev->request_queue,
-			data_direction == DMA_TO_DEVICE ?
-			REQ_OP_SCSI_OUT : REQ_OP_SCSI_IN, BLK_MQ_REQ_PREEMPT);
-	if (IS_ERR(req))
+	/*
+	 * MTK PATCH
+	 *
+	 * While suspending normal IO request can not be issued.
+	 * But when async queue is full, sd_sync_cache() will wait
+	 * for async request to be done. But since it is request_queue is
+	 * in suspending state and no request is in LLD.
+	 * So this will cause hang.
+	 *
+	 * Use REQ_NOWAIT to avoid queue full durinig pm progress.
+	 *
+	 */
+	unsigned int op = (data_direction == DMA_TO_DEVICE ?
+		REQ_OP_SCSI_OUT : REQ_OP_SCSI_IN);
+
+	if (rq_flags & RQF_PM)
+		op |= REQ_NOWAIT;
+
+	req = blk_get_request(sdev->request_queue, op, BLK_MQ_REQ_PREEMPT);
+	if (IS_ERR(req)) {
+		/*
+		 * MTK PATCH
+		 * pass the error code to the
+		 * generic layer
+		 */
+		if (req == ERR_PTR(-EAGAIN))
+			ret = -EAGAIN;
 		return ret;
+	}
 	rq = scsi_req(req);
 
-	if (bufflen &&	blk_rq_map_kern(sdev->request_queue, req,
+	if (bufflen && blk_rq_map_kern(sdev->request_queue, req,
 					buffer, bufflen, GFP_NOIO))
 		goto out;
 
 	rq->cmd_len = COMMAND_SIZE(cmd[0]);
 	memcpy(rq->cmd, cmd, rq->cmd_len);
 	rq->retries = retries;
-	req->timeout = timeout;
+	if (likely(!sdev->timeout_override))
+		req->timeout = timeout;
+	else
+		req->timeout = sdev->timeout_override;
+
 	req->cmd_flags |= flags;
 	req->rq_flags |= rq_flags | RQF_QUIET;
 
@@ -2467,6 +2495,33 @@ void scsi_unblock_requests(struct Scsi_Host *shost)
 	scsi_run_host_queues(shost);
 }
 EXPORT_SYMBOL(scsi_unblock_requests);
+
+/*
+ * Function:    scsi_set_cmd_timeout_override()
+ *
+ * Purpose:     Utility function used by low-level drivers to override
+		timeout for the scsi commands.
+ *
+ * Arguments:   sdev       - scsi device in question
+ *		timeout	   - timeout in jiffies
+ *
+ * Returns:     Nothing
+ *
+ * Lock status: No locks are assumed held.
+ *
+ * Notes:	Some platforms might be very slow and command completion may
+ *		take much longer than default scsi command timeouts.
+ *		SCSI Read/Write command timeout can be changed by
+ *		blk_queue_rq_timeout() but there is no option to override
+ *		timeout for rest of the scsi commands. This function would
+ *		would allow this.
+ */
+void scsi_set_cmd_timeout_override(struct scsi_device *sdev,
+				   unsigned int timeout)
+{
+	sdev->timeout_override = timeout;
+}
+EXPORT_SYMBOL(scsi_set_cmd_timeout_override);
 
 int __init scsi_init_queue(void)
 {

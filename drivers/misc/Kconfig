@@ -513,6 +513,40 @@ config MISC_RTSX
 	tristate
 	default MISC_RTSX_PCI || MISC_RTSX_USB
 
+config UID_SYS_STATS
+	bool "Per-UID statistics"
+	depends on PROFILING && TASK_XACCT && TASK_IO_ACCOUNTING
+	help
+	  Per UID based cpu time statistics exported to /proc/uid_cputime
+	  Per UID based io statistics exported to /proc/uid_io
+	  Per UID based procstat control in /proc/uid_procstat
+
+config UID_SYS_STATS_DEBUG
+	bool "Per-TASK statistics"
+	depends on UID_SYS_STATS
+	default n
+	help
+	  Per TASK based io statistics exported to /proc/uid_io
+
+#ifdef OPLUS_FEATURE_TP_BASIC
+#Qicai.Gu@BSP.TP, 2020/08/25, modify for sim detect
+config SIM_DETECT
+	tristate "SIM_DETECT system"
+	default n
+	help
+	  Say Y here to enable sim detect system support
+#endif /* OPLUS_FEATURE_TP_BASIC */
+
+#ifdef OPLUS_FEATURE_SDCARD
+#Zhenxi.Wei@BSP.Storage.Sdcard add for sdcard support
+config OPLUS_FEATURE_SDCARD
+        tristate "Sdcard add for sdcard support"
+        default n
+        help
+          Say Y here to use ldo5 in mt6360 for sdcard
+
+#endif /*OPLUS_FEATURE_SDCARD*/
+
 source "drivers/misc/c2port/Kconfig"
 source "drivers/misc/eeprom/Kconfig"
 source "drivers/misc/cb710/Kconfig"
@@ -527,4 +561,6 @@ source "drivers/misc/echo/Kconfig"
 source "drivers/misc/cxl/Kconfig"
 source "drivers/misc/ocxl/Kconfig"
 source "drivers/misc/cardreader/Kconfig"
+source "drivers/misc/mediatek/Kconfig"
+source "drivers/misc/oppo_motor/Kconfig"
 endmenu

@@ -33,6 +33,20 @@
 
 #define PANIC_TIMER_STEP 100
 #define PANIC_BLINK_SPD 18
+#ifdef OPLUS_FEATURE_PHOENIX
+// Kun.Hu@TECH.BSP.Stability.PHOENIX_PROJECT 2019/06/11, Add for phoenix project
+#include "../drivers/soc/oplus/system/oppo_phoenix/oppo_phoenix.h"
+#include <linux/timer.h>
+#include <linux/timex.h>
+#include <linux/rtc.h>
+//Liang.Zhang@PSW.TECH.BOOTUP, 2019/01/22, Add for monitor kernel error
+int kernel_panic_happened = 0;
+int hwt_happened = 0;
+#endif
+#ifdef VENDOR_EDIT
+/* Bin.Li@EXP.BSP.bootloader.bootflow, 2017/05/24, Add for interface reboot reason */
+int is_kernel_panic = 0;
+#endif
 
 int panic_on_oops = CONFIG_PANIC_ON_OOPS_VALUE;
 static unsigned long tainted_mask =
@@ -47,8 +61,10 @@ int panic_timeout = CONFIG_PANIC_TIMEOUT;
 EXPORT_SYMBOL_GPL(panic_timeout);
 
 ATOMIC_NOTIFIER_HEAD(panic_notifier_list);
-
 EXPORT_SYMBOL(panic_notifier_list);
+
+void (*vendor_panic_cb)(u64 sp);
+EXPORT_SYMBOL_GPL(vendor_panic_cb);
 
 static long no_blink(int state)
 {
@@ -67,6 +83,34 @@ void __weak panic_smp_self_stop(void)
 	while (1)
 		cpu_relax();
 }
+
+#ifdef OPLUS_FEATURE_PHOENIX
+//Liang.Zhang@PSW.TECH.BOOTUP, 2018/11/12, Add for monitor kernel panic
+void deal_fatal_err(void)
+{
+    if(!phx_is_phoenix_boot_completed()) {
+
+        if(kernel_panic_happened) {
+            phx_set_boot_error(ERROR_KERNEL_PANIC);
+        } else if(hwt_happened) {
+            phx_set_boot_error(ERROR_HWT);
+        }
+
+    } else {
+        struct timespec ts;
+        struct rtc_time tm;
+        char err_info[60] = {0};
+
+        getnstimeofday(&ts);
+        rtc_time_to_tm(ts.tv_sec, &tm);
+
+        sprintf(err_info, "panic after bootup @%d-%d-%d %d:%d:%d",
+                tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+        pr_err("panic after bootup @%d-%d-%d %d:%d:%d\n",
+               tm.tm_year + 1900, tm.tm_mon + 1, tm.tm_mday, tm.tm_hour, tm.tm_min, tm.tm_sec);
+    }
+}
+#endif /*OPLUS_FEATURE_PHOENIX*/
 
 /*
  * Stop ourselves in NMI context if another CPU has already panicked. Arch code
@@ -177,6 +221,8 @@ void panic(const char *fmt, ...)
 	va_start(args, fmt);
 	vsnprintf(buf, sizeof(buf), fmt, args);
 	va_end(args);
+	if (vendor_panic_cb)
+		vendor_panic_cb(0);
 	pr_emerg("Kernel panic - not syncing: %s\n", buf);
 #ifdef CONFIG_DEBUG_BUGVERBOSE
 	/*
@@ -254,6 +300,11 @@ void panic(const char *fmt, ...)
 	if (!panic_blink)
 		panic_blink = no_blink;
 
+#ifdef VENDOR_EDIT
+	/* Bin.Li@EXP.BSP.bootloader.bootflow, 2017/05/24, Modify for add interface reboot reason */
+	is_kernel_panic = 1;
+#endif
+
 	if (panic_timeout > 0) {
 		/*
 		 * Delay timeout seconds before rebooting the machine.
@@ -276,6 +327,8 @@ void panic(const char *fmt, ...)
 		 * shutting down.  But if there is a chance of
 		 * rebooting the system it will be rebooted.
 		 */
+		if (panic_reboot_mode != REBOOT_UNDEFINED)
+			reboot_mode = panic_reboot_mode;
 		emergency_restart();
 	}
 #ifdef __sparc__
@@ -467,6 +520,11 @@ int oops_may_print(void)
  */
 void oops_enter(void)
 {
+#ifdef VENDOR_EDIT
+	/* Bin.Li@EXP.BSP.bootloader.bootflow, 2017/05/24, Modify for add interface reboot reason */
+	is_kernel_panic = 1;
+#endif
+
 	tracing_off();
 	/* can't trust the integrity of the kernel anymore: */
 	debug_locks_off();

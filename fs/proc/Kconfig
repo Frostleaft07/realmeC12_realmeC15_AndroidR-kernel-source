@@ -97,3 +97,17 @@ config PROC_CHILDREN
 
 	  Say Y if you are running any user-space software which takes benefit from
 	  this interface. For example, rkt is such a piece of software.
+
+config PROC_UID
+	bool "Include /proc/uid/ files"
+	depends on PROC_FS && RT_MUTEXES
+	help
+	Provides aggregated per-uid information under /proc/uid.
+#ifdef OPLUS_FEATURE_HEALTHINFO
+#//Huacai.Zhou@PSW.BSP.kernel.Peformance, 2018/06/18, add foreground process opt support
+source fs/proc/oppo_healthinfo/Kconfig
+#endif /* OPLUS_FEATURE_HEALTHINFO */
+
+#ifdef OPLUS_FEATURE_TASK_CPUSTATS
+source "fs/proc/task_cpustats/Kconfig"
+#endif /* OPLUS_FEATURE_TASK_CPUSTATS */

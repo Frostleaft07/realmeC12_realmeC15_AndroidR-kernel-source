@@ -27,6 +27,7 @@
 #include <linux/mmc/slot-gpio.h>
 
 #include "core.h"
+#include "crypto.h"
 #include "host.h"
 #include "slot-gpio.h"
 #include "pwrseq.h"
@@ -360,6 +361,10 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	int err;
 	struct mmc_host *host;
 
+#ifdef CONFIG_MTK_EMMC_CQ_SUPPORT
+	int i;
+#endif
+
 	host = kzalloc(sizeof(struct mmc_host) + extra, GFP_KERNEL);
 	if (!host)
 		return NULL;
@@ -376,6 +381,10 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	host->index = err;
 
 	dev_set_name(&host->class_dev, "mmc%d", host->index);
+
+#ifdef OPLUS_FEATURE_MMC_DRIVER
+	host->card_stuck_in_programing_status = 0;
+#endif
 
 	host->parent = dev;
 	host->class_dev.parent = dev;
@@ -408,6 +417,24 @@ struct mmc_host *mmc_alloc_host(int extra, struct device *dev)
 	host->fixed_drv_type = -EINVAL;
 	host->ios.power_delay_ms = 10;
 
+#ifdef CONFIG_MTK_EMMC_CQ_SUPPORT
+	if (host->index == 0) {
+		for (i = 0; i < EMMC_MAX_QUEUE_DEPTH; i++)
+			host->areq_que[i] = NULL;
+
+		atomic_set(&host->areq_cnt, 0);
+		host->areq_cur = NULL;
+		host->done_mrq = NULL;
+		INIT_LIST_HEAD(&host->cmd_que);
+		INIT_LIST_HEAD(&host->dat_que);
+		spin_lock_init(&host->cmd_que_lock);
+		spin_lock_init(&host->dat_que_lock);
+		spin_lock_init(&host->que_lock);
+		init_waitqueue_head(&host->cmp_que);
+		init_waitqueue_head(&host->cmdq_que);
+	}
+#endif
+
 	return host;
 }
 
@@ -439,7 +466,8 @@ int mmc_add_host(struct mmc_host *host)
 #endif
 
 	mmc_start_host(host);
-	mmc_register_pm_notifier(host);
+	if (!(host->pm_flags & MMC_PM_IGNORE_PM_NOTIFY))
+		mmc_register_pm_notifier(host);
 
 	return 0;
 }
@@ -456,7 +484,8 @@ EXPORT_SYMBOL(mmc_add_host);
  */
 void mmc_remove_host(struct mmc_host *host)
 {
-	mmc_unregister_pm_notifier(host);
+	if (!(host->pm_flags & MMC_PM_IGNORE_PM_NOTIFY))
+		mmc_unregister_pm_notifier(host);
 	mmc_stop_host(host);
 
 #ifdef CONFIG_DEBUG_FS
@@ -478,6 +507,7 @@ EXPORT_SYMBOL(mmc_remove_host);
  */
 void mmc_free_host(struct mmc_host *host)
 {
+	mmc_crypto_free_host(host);
 	mmc_pwrseq_free(host);
 	put_device(&host->class_dev);
 }

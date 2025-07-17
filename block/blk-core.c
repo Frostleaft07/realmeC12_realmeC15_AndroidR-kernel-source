@@ -35,6 +35,9 @@
 #include <linux/blk-cgroup.h>
 #include <linux/debugfs.h>
 #include <linux/bpf.h>
+#include <linux/psi.h>
+#include <linux/blk-crypto.h>
+#include <mt-plat/mtk_blocktag.h> /* MTK PATCH */
 
 #define CREATE_TRACE_POINTS
 #include <trace/events/block.h>
@@ -43,8 +46,18 @@
 #include "blk-mq.h"
 #include "blk-mq-sched.h"
 #include "blk-rq-qos.h"
+#include "mtk_mmc_block.h"
+
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+#include "uxio_first/uxio_first_opt.h"
+#endif
 
 #ifdef CONFIG_DEBUG_FS
+
+#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
+#include <linux/iomonitor/iomonitor.h>
+#endif /*OPLUS_FEATURE_IOMONITOR*/
+
 struct dentry *blk_debugfs_root;
 #endif
 
@@ -188,6 +201,9 @@ void blk_rq_init(struct request_queue *q, struct request *rq)
 	memset(rq, 0, sizeof(*rq));
 
 	INIT_LIST_HEAD(&rq->queuelist);
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+	INIT_LIST_HEAD(&rq->ux_fg_bg_list);
+#endif
 	INIT_LIST_HEAD(&rq->timeout_list);
 	rq->cpu = -1;
 	rq->q = q;
@@ -411,7 +427,7 @@ void blk_sync_queue(struct request_queue *q)
 	if (q->mq_ops) {
 		struct blk_mq_hw_ctx *hctx;
 		int i;
-
+		mt_bio_queue_free(current);
 		queue_for_each_hw_ctx(q, hctx, i)
 			cancel_delayed_work_sync(&hctx->run_work);
 	} else {
@@ -1014,6 +1030,11 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id,
 		return NULL;
 
 	INIT_LIST_HEAD(&q->queue_head);
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+	INIT_LIST_HEAD(&q->ux_head);
+	INIT_LIST_HEAD(&q->fg_head);
+	INIT_LIST_HEAD(&q->bg_head);
+#endif
 	q->last_merge = NULL;
 	q->end_sector = 0;
 	q->boundary_rq = NULL;
@@ -1039,7 +1060,6 @@ struct request_queue *blk_alloc_queue_node(gfp_t gfp_mask, int node_id,
 	q->backing_dev_info->capabilities = BDI_CAP_CGROUP_WRITEBACK;
 	q->backing_dev_info->name = "block";
 	q->node = node_id;
-
 	timer_setup(&q->backing_dev_info->laptop_mode_wb_timer,
 		    laptop_mode_timer_fn, 0);
 	timer_setup(&q->timeout, blk_rq_timed_out_timer, 0);
@@ -1472,7 +1492,9 @@ out:
 	 */
 	if (ioc_batching(q, ioc))
 		ioc->nr_batch_requests--;
-
+#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
+	iomonitor_init_reqstats(rq);
+#endif /*OPLUS_FEATURE_IOMONITOR*/
 	trace_block_getrq(q, bio, op);
 	return rq;
 
@@ -1766,8 +1788,11 @@ void __blk_put_request(struct request_queue *q, struct request *req)
 	/* this is a bio leak */
 	WARN_ON(req->bio != NULL);
 
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+	rq_qos_done(q, req, (bool)((req->cmd_flags & REQ_FG)||(req->cmd_flags & REQ_UX)));
+#else
 	rq_qos_done(q, req);
-
+#endif
 	/*
 	 * Request may not have originated from ll_rw_blk. if not,
 	 * it didn't come out of our reserved rq pools
@@ -1978,9 +2003,14 @@ out:
 void blk_init_request_from_bio(struct request *req, struct bio *bio)
 {
 	struct io_context *ioc = rq_ioc(bio);
-
 	if (bio->bi_opf & REQ_RAHEAD)
 		req->cmd_flags |= REQ_FAILFAST_MASK;
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+	if (bio->bi_opf & REQ_UX)
+		req->cmd_flags |= REQ_UX;
+	else if (bio->bi_opf & REQ_FG)
+		req->cmd_flags |= REQ_FG;
+#endif
 
 	req->__sector = bio->bi_iter.bi_sector;
 	if (ioprio_valid(bio_prio(bio)))
@@ -2461,7 +2491,9 @@ blk_qc_t generic_make_request(struct bio *bio)
 			/* Create a fresh bio_list for all subordinate requests */
 			bio_list_on_stack[1] = bio_list_on_stack[0];
 			bio_list_init(&bio_list_on_stack[0]);
-			ret = q->make_request_fn(q, bio);
+
+			if (!blk_crypto_submit_bio(&bio))
+				ret = q->make_request_fn(q, bio);
 
 			/* sort new bios into those for a lower level
 			 * and those for the same level
@@ -2510,7 +2542,7 @@ blk_qc_t direct_make_request(struct bio *bio)
 {
 	struct request_queue *q = bio->bi_disk->queue;
 	bool nowait = bio->bi_opf & REQ_NOWAIT;
-	blk_qc_t ret;
+	blk_qc_t ret = BLK_QC_T_NONE;
 
 	if (!generic_make_request_checks(bio))
 		return BLK_QC_T_NONE;
@@ -2524,7 +2556,8 @@ blk_qc_t direct_make_request(struct bio *bio)
 		return BLK_QC_T_NONE;
 	}
 
-	ret = q->make_request_fn(q, bio);
+	if (!blk_crypto_submit_bio(&bio))
+		ret = q->make_request_fn(q, bio);
 	blk_queue_exit(q);
 	return ret;
 }
@@ -2541,6 +2574,10 @@ EXPORT_SYMBOL_GPL(direct_make_request);
  */
 blk_qc_t submit_bio(struct bio *bio)
 {
+	bool workingset_read = false;
+	unsigned long pflags;
+	blk_qc_t ret;
+
 	/*
 	 * If it's a regular read/write or a barrier with data attached,
 	 * go through the normal accounting stuff before submission.
@@ -2555,11 +2592,22 @@ blk_qc_t submit_bio(struct bio *bio)
 
 		if (op_is_write(bio_op(bio))) {
 			count_vm_events(PGPGOUT, count);
+#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
+			iomonitor_update_vm_stats(PGPGOUT, count);
+#endif /*OPLUS_FEATURE_IOMONITOR*/
 		} else {
+			if (bio_flagged(bio, BIO_WORKINGSET))
+				workingset_read = true;
 			task_io_account_read(bio->bi_iter.bi_size);
 			count_vm_events(PGPGIN, count);
+#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
+			iomonitor_update_vm_stats(PGPGIN, count);
+#endif /*OPLUS_FEATURE_IOMONITOR*/
 		}
 
+#ifdef CONFIG_MTK_BLOCK_TAG
+		mtk_btag_pidlog_submit_bio(bio);
+#endif
 		if (unlikely(block_dump)) {
 			char b[BDEVNAME_SIZE];
 			printk(KERN_DEBUG "%s(%d): %s block %Lu on %s (%u sectors)\n",
@@ -2569,8 +2617,27 @@ blk_qc_t submit_bio(struct bio *bio)
 				bio_devname(bio, b), count);
 		}
 	}
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+	if (test_task_ux(current))
+		bio->bi_opf |= REQ_UX;
+	else if (high_prio_for_task(current))
+		bio->bi_opf |= REQ_FG;
+#endif
+	/*
+	 * If we're reading data that is part of the userspace
+	 * workingset, count submission time as memory stall. When the
+	 * device is congested, or the submitting cgroup IO-throttled,
+	 * submission can be a significant part of overall IO time.
+	 */
+	if (workingset_read)
+		psi_memstall_enter(&pflags);
 
-	return generic_make_request(bio);
+	ret = generic_make_request(bio);
+
+	if (workingset_read)
+		psi_memstall_leave(&pflags);
+
+	return ret;
 }
 EXPORT_SYMBOL(submit_bio);
 
@@ -2762,7 +2829,11 @@ void blk_account_io_done(struct request *req, u64 now)
  * Don't process normal requests when queue is suspended
  * or in the process of suspending/resuming
  */
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+bool blk_pm_allow_request(struct request *rq)
+#else
 static bool blk_pm_allow_request(struct request *rq)
+#endif
 {
 	switch (rq->q->rpm_status) {
 	case RPM_RESUMING:
@@ -2775,7 +2846,11 @@ static bool blk_pm_allow_request(struct request *rq)
 	}
 }
 #else
+ #if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+ bool blk_pm_allow_request(struct request *rq)
+ #else
 static bool blk_pm_allow_request(struct request *rq)
+#endif
 {
 	return true;
 }
@@ -2825,14 +2900,24 @@ static struct request *elv_next_request(struct request_queue *q)
 	WARN_ON_ONCE(q->mq_ops);
 
 	while (1) {
-		list_for_each_entry(rq, &q->queue_head, queuelist) {
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+		if (likely(sysctl_uxio_io_opt)){
+			rq = smart_peek_request(q);
+			if (rq)
+				return rq;
+		} else
+		{
+#endif
+			list_for_each_entry(rq, &q->queue_head, queuelist) {
 			if (blk_pm_allow_request(rq))
 				return rq;
 
 			if (rq->rq_flags & RQF_SOFTBARRIER)
 				break;
 		}
-
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+	}
+#endif
 		/*
 		 * Flush request is running and flush request isn't queueable
 		 * in the drive, we can hold the queue till flush request is
@@ -2896,6 +2981,10 @@ struct request *blk_peek_request(struct request_queue *q)
 			 * not be passed by new incoming requests
 			 */
 			rq->rq_flags |= RQF_STARTED;
+#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
+			rq->req_td = ktime_get();
+#endif /*OPLUS_FEATURE_IOMONITOR*/
+
 			trace_block_rq_issue(q, rq);
 		}
 
@@ -2955,7 +3044,9 @@ struct request *blk_peek_request(struct request_queue *q)
 			break;
 		}
 	}
-
+#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
+	iomonitor_record_io_history(rq);
+#endif /*OPLUS_FEATURE_IOMONITOR*/
 	return rq;
 }
 EXPORT_SYMBOL(blk_peek_request);
@@ -2968,14 +3059,24 @@ static void blk_dequeue_request(struct request *rq)
 	BUG_ON(ELV_ON_HASH(rq));
 
 	list_del_init(&rq->queuelist);
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+	list_del_init(&rq->ux_fg_bg_list);
+#endif
 
 	/*
 	 * the time frame between a request being removed from the lists
 	 * and to it is freed is accounted as io that is in progress at
 	 * the driver side.
 	 */
-	if (blk_account_rq(rq))
-		q->in_flight[rq_is_sync(rq)]++;
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+	if (blk_account_rq(rq)) {
+			q->in_flight[rq_is_sync(rq)]++;
+			ohm_ioqueue_add_inflight(q, rq);
+		}
+#else
+		if (blk_account_rq(rq))
+			q->in_flight[rq_is_sync(rq)]++;
+#endif
 }
 
 /**
@@ -3086,6 +3187,9 @@ bool blk_update_request(struct request *req, blk_status_t error,
 	int total_bytes;
 
 	trace_block_rq_complete(req, blk_status_to_errno(error), nr_bytes);
+#if defined(OPLUS_FEATURE_IOMONITOR) && defined(CONFIG_IOMONITOR)
+	iomonitor_record_reqstats(req, nr_bytes);
+#endif /*OPLUS_FEATURE_IOMONITOR*/
 
 	if (!req->bio)
 		return false;
@@ -3105,7 +3209,10 @@ bool blk_update_request(struct request *req, blk_status_t error,
 			req->bio = bio->bi_next;
 
 		/* Completion has already been traced */
+#ifndef CONFIG_OPLUS_FEATURE_EXT4_DEFRAG
+		/* yanwu@TECH.Storage.FS.EXT4, 2020/02/29, support ext4 defrag */
 		bio_clear_flag(bio, BIO_TRACE_COMPLETION);
+#endif
 		req_bio_endio(req, bio, bio_bytes, error);
 
 		total_bytes += bio_bytes;
@@ -3223,7 +3330,11 @@ void blk_finish_request(struct request *req, blk_status_t error)
 	blk_account_io_done(req, now);
 
 	if (req->end_io) {
+#if defined(OPLUS_FEATURE_UIFIRST) && defined(CONFIG_OPLUS_FEATURE_UXIO_FIRST)
+		rq_qos_done(q, req, (bool)((req->cmd_flags & REQ_FG)||(req->cmd_flags & REQ_UX)));
+#else
 		rq_qos_done(q, req);
+#endif
 		req->end_io(req, error);
 	} else {
 		if (blk_bidi_rq(req))
@@ -3970,6 +4081,12 @@ int __init blk_dev_init(void)
 #ifdef CONFIG_DEBUG_FS
 	blk_debugfs_root = debugfs_create_dir("block", NULL);
 #endif
+
+	if (bio_crypt_ctx_init() < 0)
+		panic("Failed to allocate mem for bio crypt ctxs\n");
+
+	if (blk_crypto_fallback_init() < 0)
+		panic("Failed to init blk-crypto-fallback\n");
 
 	return 0;
 }
