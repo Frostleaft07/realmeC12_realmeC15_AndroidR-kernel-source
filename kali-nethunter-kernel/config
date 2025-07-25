@@ -48,7 +48,7 @@ CROSS_COMPILE_ARM32_SRC="https://kali.download/nethunter-images/toolchains/googl
 CROSS_COMPILE_ARM32_TYPE="wget"
 
 # Kernel local name
-export LOCALVERSION=-NetHunter
+export LOCALVERSION=-Endfield
 
 
 ##############################################
