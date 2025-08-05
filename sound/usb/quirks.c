@@ -1522,6 +1522,7 @@ bool snd_usb_support_autosuspend_quirk(struct usb_device *dev)
 		return false;
 	}
 	return true;
+}
 /*
  * registration quirk:
  * the registration is skipped if a device matches with the given ID,
