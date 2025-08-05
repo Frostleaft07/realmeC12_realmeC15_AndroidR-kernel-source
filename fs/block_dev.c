@@ -1542,11 +1542,7 @@ static int __blkdev_get(struct block_device *bdev, fmode_t mode, int for_part)
 				goto out_clear;
 			BUG_ON(for_part);
 			ret = __blkdev_get(whole, mode, 1);
-<<<<<<< HEAD
-			if (ret){
-=======
 			if (ret) {
->>>>>>> v4.19.130
 				bdput(whole);
 				goto out_clear;
 			}
