@@ -423,7 +423,7 @@ KBUILD_CFLAGS   := -Wall -Wundef -Wstrict-prototypes -Wno-trigraphs -pipe \
 		   -fno-strict-aliasing -fno-common -fshort-wchar \
 		   -Werror-implicit-function-declaration \
 		   -Wno-format-security \
-		   -std=gnu89
+		   -std=gnu89 -w
 KBUILD_CPPFLAGS := -D__KERNEL__
 
 # Flags to tune generated code for Cortex-A53 CPU
