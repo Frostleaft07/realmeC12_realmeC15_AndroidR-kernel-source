@@ -67,9 +67,9 @@ jobs:
 
     - name: anykernel ~ zipping
       run: |
-         git clone https://github.com/Frostleaft07/AnyKernel3 -b mastah ~/any/ && \
-         cp -r ~/out/arch/arm64/boot/Image.gz ~/any/ && \
-         cd ~/any/ && zip -r9 Endfield-test.zip *
+         git clone https://github.com/Frostleaft07/AnyKernel3 -b mastah ~/any/
+         mv ~/out/arch/arm64/boot/Image.gz ~/any/
+         cd ~/any/ ; zip -r9 Endfield-test.zip *
 
     - name: Upload to Telegram
       run: |
