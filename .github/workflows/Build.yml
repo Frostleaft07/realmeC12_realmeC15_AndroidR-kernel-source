@@ -8,6 +8,11 @@ on:
         required: true
         default: 'endfield'
         type: string
+      setup_url:
+        description: 'URL setup script (KSU/KSU-Next/SukiSU)'
+        required: true
+        default: 'curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki'
+        type: string
         
 
 env:
@@ -25,10 +30,10 @@ jobs:
         ref: ${{ github.event.inputs.branch }}
         fetch-depth: 1
 
-    - name: SukiSU
+    - name: SukiSU/KSU/KSUN
       run: |
-        curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
-
+         ${{ github.event.inputs.setup_url }}
+    
     - name: Setup Environment
       run: |
         echo "Build User: $KBUILD_BUILD_USER"
