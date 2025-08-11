@@ -45,4 +45,11 @@ config OPLUS_CHARGER_OPTIGA
 	bool "OPLUS OPTIGA soc node"
 	help
 	  Say Y to include support
+
+config OPLUS_CHARGER_IGNORE_SCREEN_STATE
+    bool "Ignore screen state for charging policy"
+    default n
+    help
+      Make charging current unaffected by screen on/off state.
+
 endif #OPLUS_CHARGER

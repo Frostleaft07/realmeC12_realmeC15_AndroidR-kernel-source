@@ -4839,7 +4839,11 @@ static int fb_notifier_callback(struct notifier_block *nb,
 		if (event == FB_EVENT_BLANK) {
 			blank = *(int *)evdata->data;
 			if (blank == FB_BLANK_UNBLANK) {
+				#ifdef CONFIG_OPLUS_CHARGER_IGNORE_SCREEN_STATE
+				g_charger_chip->led_on = false;
+				#else
 				g_charger_chip->led_on = true;
+				#endif
 				g_charger_chip->led_on_change = true;
 			} else if (blank == FB_BLANK_POWERDOWN) {
 				g_charger_chip->led_on = false;
@@ -4873,7 +4877,11 @@ void oplus_chg_set_led_status(bool val)
 	if (!g_charger_chip) {
 		return;
 	} else {
+#ifdef CONFIG_OPLUS_CHARGER_IGNORE_SCREEN_STATE
+		g_charger_chip->led_on = false;
+#else
 		g_charger_chip->led_on = val;
+#endif
 		g_charger_chip->led_on_change = true;
 	}
 }
