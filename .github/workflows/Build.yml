@@ -18,6 +18,7 @@ env:
   KBUILD_BUILD_USER: Frostleaf
   KBUILD_BUILD_HOST: Darkness
   LOCALVERSION: "-Endfield 🪐"
+  TZ: Asia/Jakarta
 
 jobs:
   build:
@@ -44,6 +45,7 @@ jobs:
 
     - name: check clang
       run: |
+       echo "Current time: $(date)"
        clang -v
 
     - name: Set Swap Space
