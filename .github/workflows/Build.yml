@@ -13,11 +13,16 @@ on:
         required: true
         default: 'curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki'
         type: string
+      localversion:
+        description: 'Custom LOCALVERSION (e.g., -MyKernel)'
+        required: true
+        default: '-Endfield 🪐'
+        type: string
 
 env:
   KBUILD_BUILD_USER: Frostleaf
   KBUILD_BUILD_HOST: Darkness
-  LOCALVERSION: "-Endfield 🪐"
+  LOCALVERSION: ${{ github.event.inputs.localversion }}
   TZ: Asia/Jakarta
 
 jobs:
