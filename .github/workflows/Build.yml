@@ -83,5 +83,5 @@ jobs:
          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendDocument" \
          -F chat_id="${{ secrets.CHAT_ID }}" \
          -F message_thread_id="${{ secrets.TOPIC_ID }}" \
-         -F caption="$(echo -e "$(date)\n\nRMX2185 UI2")" \
+         -F caption="$(echo -e "$(date)\n\nRMX2185 UI2\n\nCommit: $(git log -1 --pretty='%h - %s (%ci)')")" \
          -F document=@"/home/runner/any/Endfield-test.zip" > /dev/null 2>&1
