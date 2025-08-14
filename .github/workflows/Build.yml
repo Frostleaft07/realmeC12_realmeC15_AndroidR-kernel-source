@@ -24,7 +24,7 @@ on:
         default: 'endfield_defconfig'
         type: string
       build_user:
-        description: 'set user (xxx@host'
+        description: 'set user (xxx@host)'
         required: true
         default: 'Frostleaft07'
         type: string
