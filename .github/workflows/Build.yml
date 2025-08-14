@@ -23,10 +23,20 @@ on:
         required: true
         default: 'endfield_defconfig'
         type: string
+      build_user:
+        description: 'set user (xxx@host'
+        required: true
+        default: 'Frostleaft07'
+        type: string
+      build_host:
+        description: 'set host (user@xxx)'
+        required: true
+        default: 'Darkness'
+        type: string
 
 env:
-  KBUILD_BUILD_USER: Frostleaf
-  KBUILD_BUILD_HOST: Darkness
+  KBUILD_BUILD_USER: ${{ github.event.inputs.build_user }}
+  KBUILD_BUILD_HOST: ${{ github.event.inputs.build_host }}
   LOCALVERSION: ${{ github.event.inputs.localversion }}
   TZ: Asia/Jakarta
 
