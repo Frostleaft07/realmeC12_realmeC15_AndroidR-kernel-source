@@ -728,17 +728,12 @@ static int init_subsys_clks(struct platform_device *pdev,
 	return sub_clk_cnt;
 }
 
-static int init_clks(struct platform_device *pdev, struct clk **clk)
+static void init_clks(struct platform_device *pdev, struct clk **clk)
 {
 	int i;
 
-	for (i = CLK_NONE + 1; i < CLK_MAX; i++) {
+	for (i = CLK_NONE + 1; i < CLK_MAX; i++)
 		clk[i] = devm_clk_get(&pdev->dev, clk_names[i]);
-		if (IS_ERR(clk[i]))
-			return PTR_ERR(clk[i]);
-	}
-
-	return 0;
 }
 
 static int mtk_pd_set_performance(struct generic_pm_domain *genpd,
@@ -793,7 +788,7 @@ static struct scp *init_scp(struct platform_device *pdev,
 {
 	struct genpd_onecell_data *pd_data;
 	struct resource *res;
-	int i, j, ret;
+	int i, j, count;
 	struct scp *scp;
 	struct clk *clk[CLK_MAX];
 
@@ -870,9 +865,7 @@ static struct scp *init_scp(struct platform_device *pdev,
 
 	pd_data->num_domains = num;
 
-	ret = init_clks(pdev, clk);
-	if (ret)
-		return ERR_PTR(ret);
+	init_clks(pdev, clk);
 
 	for (i = 0; i < num; i++) {
 		struct scp_domain *scpd = &scp->domains[i];
@@ -931,9 +924,9 @@ static struct scp *init_scp(struct platform_device *pdev,
 		if (MTK_SCPD_CAPS(scpd, MTK_SCPD_ALWAYS_ON))
 			genpd->flags |= GENPD_FLAG_ALWAYS_ON;
 
-		ret = of_count_phandle_with_args(pdev->dev.of_node,
+		count = of_count_phandle_with_args(pdev->dev.of_node,
 			   "operating-points-v2", NULL);
-		if (ret > 0) {
+		if (count > 0) {
 			genpd->set_performance_state = mtk_pd_set_performance;
 			genpd->opp_to_performance_state =
 				mtk_pd_get_performance;
