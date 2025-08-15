@@ -24,6 +24,10 @@ int crypto_chacha20_setkey(struct crypto_skcipher *tfm, const u8 *key,
 			   unsigned int keysize);
 int crypto_chacha20_crypt(struct skcipher_request *req);
 
+void chacha20_block(u32 *state, u8 *stream)
+{
+    chacha_block(state, stream, 20);
+}
 enum chacha_constants { /* expand 32-byte k */
 	CHACHA_CONSTANT_EXPA = 0x61707865U,
 	CHACHA_CONSTANT_ND_3 = 0x3320646eU,
