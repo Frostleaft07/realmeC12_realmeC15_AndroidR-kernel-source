@@ -50,7 +50,6 @@
 #include <linux/syscalls.h>
 #include <linux/completion.h>
 #include <linux/uuid.h>
-#include <crypto/chacha.h>
 #include <linux/uaccess.h>
 #include <linux/siphash.h>
 #include <linux/uio.h>
