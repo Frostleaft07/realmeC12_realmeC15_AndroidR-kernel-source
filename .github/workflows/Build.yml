@@ -53,6 +53,7 @@ jobs:
     - name: SukiSU/KSU/KSUN
       run: |
          ${{ github.event.inputs.setup_url }}
+         echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/${{ github.event.inputs.defconfig }}
 
     - name: Setup Environment
       run: |
