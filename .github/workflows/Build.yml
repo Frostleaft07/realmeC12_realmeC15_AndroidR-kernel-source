@@ -38,6 +38,14 @@ on:
         required: true
         default: 'Asia/Jakarta'
         type: string
+      hook:
+        description: 'hook manual/tracepoint'
+        required: true
+        default: 'manual'
+        type: choice
+        options:
+          - manual
+          - tracepoint
 
 env:
   KBUILD_BUILD_USER: ${{ github.event.inputs.build_user }}
@@ -58,7 +66,11 @@ jobs:
     - name: SukiSU/KSU/KSUN
       run: |
          ${{ github.event.inputs.setup_url }}
+         if [ "${{ github.event.inputs.hook }}" == "manual" ]; then
          echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/${{ github.event.inputs.defconfig }}
+         elif [ "${{ github.event.inputs.hook }}" == "tracepoint" ]; then
+         echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> arch/arm64/configs/${{ github.event.inputs.defconfig }}
+         fi
 
     - name: Setup Environment
       run: |
