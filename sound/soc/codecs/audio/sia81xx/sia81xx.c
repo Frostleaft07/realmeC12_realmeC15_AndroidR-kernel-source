@@ -745,9 +745,10 @@ static int sia81xx_reg_init(
 	if(NULL == sia81xx->client)
 		return 0;
 
-	
-	if(0 != sia81xx_regmap_check_chip_id(sia81xx->regmap, sia81xx->chip_type)) {
-		pr_err("[  err][%s] %s: sia81xx_regmap_check_chip_id error !!! \r\n", 
+//	if(0 != sia81xx_regmap_check_chip_id(sia81xx->regmap, sia81xx->chip_type)) {
+	int ret = sia81xx_regmap_check_chip_id(sia81xx->regmap, sia81xx->chip_type);
+	if (ret) {
+		pr_warn("[warn][%s] %s: chip ID check failed (ret=%d), continuing anyway\r\n",
 			LOG_FLAG, __func__);
 	}
 	
