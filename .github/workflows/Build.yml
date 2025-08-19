@@ -135,6 +135,7 @@ jobs:
       run: |
         echo "Build User: $KBUILD_BUILD_USER"
         echo "Build Host: $KBUILD_BUILD_HOST"
+        echo "DATE=$(date +%Y-%m-%d-%H-%M-%S)" >> $GITHUB_ENV
         git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b android11-release
         echo "$GITHUB_WORKSPACE/clang/bin:$GITHUB_WORKSPACE/aarch64-linux-android-4.9/bin:/usr/bin:/bin" >> $GITHUB_PATH
         sed -i -E 's/\bpython2\b ?//g; s/  +/ /g' package
@@ -142,7 +143,6 @@ jobs:
 
     - name: check clang
       run: |
-       echo "Current time: $(date)"
        clang -v
 
     - name: Set Swap Space
@@ -191,16 +191,18 @@ jobs:
     - name: anykernel ~ zipping
       run: |
          KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
-         DATE=$(date +%Y-%m-%d-%H-%M-%S)
-         ZIP=Endfield_${KSU_VARIANT}_${DATE}_RMX2180_RUI2.zip
+         ZIP=Endfield_${KSU_VARIANT}_${{ env.DATE }}_RMX2180_RUI2.zip
          git clone https://github.com/Frostleaft07/AnyKernel3 -b mastah ~/any/
          mv ~/out/arch/arm64/boot/Image.gz ~/any/
          cd ~/any/ ; zip -r9 $ZIP *
 
     - name: Upload to Telegram
       run: |
+         KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
+         ZIP=Endfield_${KSU_VARIANT}_${{ env.DATE }}_RMX2180_RUI2.zip
+         FILE_PATH="/home/runner/any/$ZIP"
          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendDocument" \
          -F chat_id="${{ secrets.CHAT_ID }}" \
          -F message_thread_id="${{ secrets.TOPIC_ID }}" \
          -F caption="$(echo -e "$(date)\n\nRMX2185 UI2\n\nCommit: $(git log -1 --pretty='%h - %s (%ci)')")" \
-         -F document=@"/home/runner/any/Endfield-test.zip" > /dev/null 2>&1
+         -F document=@"$FILE_PATH" > /dev/null 2>&1
