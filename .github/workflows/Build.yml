@@ -11,11 +11,32 @@ on:
         options:
           - endfield
           - 4.19-upstream
-      setup_url:
-        description: 'URL setup script (KSU/KSU-Next/SukiSU)'
+      kernelsu_variant:
+        description: 'KernelSU variant'
         required: true
-        default: 'curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki'
-        type: string
+        type: choice
+        default: 'SukiSU-Ultra'
+        options:
+          - 'SukiSU-Ultra'
+          - 'KernelSU-Next'
+          - 'KernelSU'
+          - 'None'
+      sukisu_branch:
+        description: 'sukisu branch'
+        required: true
+        default: 'nongki'
+        type: choice
+        options:
+          - nongki
+          - susfs-main
+      kpm:
+        description: 'build dengan KPM (hanya SUKISU)'
+        required: true
+        type: choice
+        default: 'yes'
+        options:
+          - 'yes'
+          - 'no'
       localversion:
         description: 'Custom LOCALVERSION (e.g., -MyKernel)'
         required: true
@@ -64,16 +85,47 @@ jobs:
       uses: actions/checkout@v3
       with:
         ref: ${{ github.event.inputs.branch }}
-        fetch-depth: 1
+        fetch-depth: 0
 
-    - name: SukiSU/KSU/KSUN
+    - name: Setup SukiSU/KSU/KSUN
       run: |
-         ${{ github.event.inputs.setup_url }}
-         if [ "${{ github.event.inputs.hook }}" == "manual" ]; then
-         echo "CONFIG_KSU_MANUAL_HOOK=y" >> arch/arm64/configs/${{ github.event.inputs.defconfig }}
-         elif [ "${{ github.event.inputs.hook }}" == "tracepoint" ]; then
-         echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> arch/arm64/configs/${{ github.event.inputs.defconfig }}
-         fi
+        KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
+        KPM="${{ github.event.inputs.kpm }}"
+
+        if [ "$KSU_VARIANT" == "SukiSU-Ultra" ]; then
+          BRANCH="${{ github.event.inputs.sukisu_branch }}"
+          HOOK="${{ github.event.inputs.hook }}"
+          DEFCONFIG="arch/arm64/configs/${{ github.event.inputs.defconfig }}"
+
+        if [ "$BRANCH" == "susfs-main" ]; then
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-main
+        elif [ "$BRANCH" == "nongki" ]; then
+          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
+        fi
+
+        if [ "$HOOK" == "manual" ]; then
+          echo "CONFIG_KSU_MANUAL_HOOK=y" >> "$DEFCONFIG"
+        elif [ "$HOOK" == "tracepoint" ]; then
+          echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> "$DEFCONFIG"
+        fi
+
+        if [ "$KPM" == "yes" ]; then
+          echo "CONFIG_KPM=y" >> "$DEFCONFIG"
+        elif [ "$KPM" == "no" ]; then
+          echo "Non KPM"
+        fi
+
+        elif [ "$KSU_VARIANT" == "KernelSU-Next" ]; then
+          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
+          git revert --no-edit 87fcb3dd6269bfbd1829fec0cee011f2ad74ce77 36c1971f95e89848df59b18dff7fc47171d24c54
+
+        elif [ "$KSU_VARIANT" == "KernelSU" ]; then
+          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
+          git revert --no-edit 87fcb3dd6269bfbd1829fec0cee011f2ad74ce77 36c1971f95e89848df59b18dff7fc47171d24c54
+
+        else
+          echo "Build tanpa KernelSU"
+        fi
 
     - name: Setup Environment
       run: |
@@ -107,6 +159,30 @@ jobs:
           READELF=llvm-readelf \
           CROSS_COMPILE=aarch64-linux-android- \
           CLANG_TRIPLE=aarch64-linux-gnu-
+    
+    - name: patch KPM
+      run: |
+        KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
+        KPM_ENABLE="${{ github.event.inputs.kpm }}"
+
+        if [ "$KSU_VARIANT" == "SukiSU-Ultra" ] && [ "$KPM_ENABLE" == "yes" ]; then
+          echo "patch file Image..."
+          cd "~/out/arch/arm64/boot"
+          wget https://github.com/SukiSU-Ultra/SukiSU_patch/raw/refs/heads/main/kpm/patch_linux
+          chmod +x patch_linux
+          ./patch_linux Image
+        if [ $? -eq 0 ]; then
+          rm -f Image
+          mv oImage Image
+          gzip -9 -c Image > Image.gz
+          echo "Done"
+        else
+          echo "Failed"
+        fi
+        else 
+          echo "tanpa KPM"
+        fi
+
 
     - name: anykernel ~ zipping
       run: |
