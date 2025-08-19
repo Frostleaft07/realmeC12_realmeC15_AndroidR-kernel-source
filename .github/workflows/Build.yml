@@ -117,10 +117,14 @@ jobs:
 
         elif [ "$KSU_VARIANT" == "KernelSU-Next" ]; then
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
+          git config --global user.name "$KBUILD_BUILD_USER"
+          git config --global user.email "buildbot@bot.com"
           git revert --no-edit 87fcb3dd6269bfbd1829fec0cee011f2ad74ce77 36c1971f95e89848df59b18dff7fc47171d24c54
 
         elif [ "$KSU_VARIANT" == "KernelSU" ]; then
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
+          git config --global user.name "$KBUILD_BUILD_USER"
+          git config --global user.email "buildbot@bot.com"
           git revert --no-edit 87fcb3dd6269bfbd1829fec0cee011f2ad74ce77 36c1971f95e89848df59b18dff7fc47171d24c54
 
         else
@@ -186,9 +190,12 @@ jobs:
 
     - name: anykernel ~ zipping
       run: |
+         KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
+         DATE=$(date +%Y-%m-%d-%H-%M-%S)
+         ZIP=Endfield_${KSU_VARIANT}_${DATE}_RMX2180_RUI2.zip
          git clone https://github.com/Frostleaft07/AnyKernel3 -b mastah ~/any/
          mv ~/out/arch/arm64/boot/Image.gz ~/any/
-         cd ~/any/ ; zip -r9 Endfield-test.zip *
+         cd ~/any/ ; zip -r9 $ZIP *
 
     - name: Upload to Telegram
       run: |
