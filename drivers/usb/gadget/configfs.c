@@ -1487,6 +1487,11 @@ static void android_work(struct work_struct *data)
 	unsigned long flags;
 	bool uevent_sent = false;
 
+	if (!android_device) {
+	    pr_err("%s: android_device is NULL\n", __func__);
+	    return;
+	}
+
 	spin_lock_irqsave(&cdev->lock, flags);
 	if (cdev->config)
 		status[1] = true;
@@ -1672,6 +1677,7 @@ static int android_setup(struct usb_gadget *gadget,
 	if (!gi->connected) {
 		gi->connected = 1;
 		schedule_work(&gi->work);
+		pr_info("SCHEDULE_WORK: gi->work scheduled from android_bind_config\n");
 	}
 	spin_unlock_irqrestore(&cdev->lock, flags);
 
@@ -1799,13 +1805,15 @@ static int android_device_create(struct gadget_info *gi)
 	struct device_attribute **attrs;
 	struct device_attribute *attr;
 
-	INIT_WORK(&gi->work, android_work);
 	android_device = device_create(android_class, NULL,
 				MKDEV(0, 0), NULL, "android0");
 	if (IS_ERR(android_device))
 		return PTR_ERR(android_device);
 
 	dev_set_drvdata(android_device, gi);
+
+	INIT_WORK(&gi->work, android_work);
+	pr_info("INIT_WORK: gi->work initialized with android_work\n");
 
 	attrs = android_usb_attributes;
 	while ((attr = *attrs++)) {
