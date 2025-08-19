@@ -63,7 +63,7 @@ on:
         default: 'Asia/Jakarta'
         type: string
       hook:
-        description: 'hook manual/tracepoint'
+        description: 'hook manual/tracepoint (hanya SUKISU)'
         required: true
         default: 'manual'
         type: choice
