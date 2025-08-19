@@ -4,10 +4,13 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'select branch or id commit'
+        description: 'select branch'
         required: true
         default: 'endfield'
-        type: string
+        type: choice
+        options:
+          - endfield
+          - 4.19-upstream
       setup_url:
         description: 'URL setup script (KSU/KSU-Next/SukiSU)'
         required: true
