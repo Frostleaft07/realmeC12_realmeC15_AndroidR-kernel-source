@@ -85,7 +85,7 @@ jobs:
       uses: actions/checkout@v3
       with:
         ref: ${{ github.event.inputs.branch }}
-        fetch-depth: 0
+        fetch-depth: 1
 
     - name: Setup SukiSU/KSU/KSUN
       run: |
@@ -117,16 +117,13 @@ jobs:
 
         elif [ "$KSU_VARIANT" == "KernelSU-Next" ]; then
           curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
-          git config --global user.name "$KBUILD_BUILD_USER"
-          git config --global user.email "buildbot@bot.com"
-          git revert --no-edit 87fcb3dd6269bfbd1829fec0cee011f2ad74ce77
+          wget https://github.com/Frostleaft07/realmeC12_realmeC15_AndroidR-kernel-source/releases/download/Files/0001-Revert-kernelsu-set-ifdef-ke-if-defined-xxxx.patch
+          patch -p1< 0001-Revert-kernelsu-set-ifdef-ke-if-defined-xxxx.patch
 
         elif [ "$KSU_VARIANT" == "KernelSU" ]; then
           curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
-          git config --global user.name "$KBUILD_BUILD_USER"
-          git config --global user.email "buildbot@bot.com"
-          git revert --no-edit 87fcb3dd6269bfbd1829fec0cee011f2ad74ce77
-
+          wget https://github.com/Frostleaft07/realmeC12_realmeC15_AndroidR-kernel-source/releases/download/Files/0001-Revert-kernelsu-set-ifdef-ke-if-defined-xxxx.patch
+          patch -p1< 0001-Revert-kernelsu-set-ifdef-ke-if-defined-xxxx.patch
         else
           echo "Build tanpa KernelSU"
         fi
