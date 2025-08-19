@@ -171,7 +171,7 @@ jobs:
 
         if [ "$KSU_VARIANT" == "SukiSU-Ultra" ] && [ "$KPM_ENABLE" == "yes" ]; then
           echo "patch file Image..."
-          cd "~/out/arch/arm64/boot"
+          cd "/home/runner/out/arch/arm64/boot"
           wget https://github.com/SukiSU-Ultra/SukiSU_patch/raw/refs/heads/main/kpm/patch_linux
           chmod +x patch_linux
           ./patch_linux Image
