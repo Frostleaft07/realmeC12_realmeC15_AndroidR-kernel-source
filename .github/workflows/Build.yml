@@ -203,3 +203,16 @@ jobs:
          -F message_thread_id="${{ secrets.TOPIC_ID }}" \
          -F caption="$(echo -e "$(date)\n\nRMX2185 UI2\n\nCommit: $(git log -1 --pretty='%h - %s (%ci)')")" \
          -F document=@"$FILE_PATH" > /dev/null 2>&1
+         
+    - name: Upload to Release
+      uses: softprops/action-gh-release@v2
+      with:
+        files: |
+          /home/runner/any/*.zip
+        name: ${{ github.event.inputs.kernelsu_variant }}-${{ github.run_id }}
+        tag_name: ${{ github.run_id }}
+        body: |
+          Variant: ${{ github.event.inputs.kernelsu_variant }}
+          KPM: ${{ github.event.inputs.kpm }}
+          Hook: ${{ github.event.inputs.hook }}
+          branch: ${{ github.event.inputs.branch }}
