@@ -106,10 +106,10 @@ static struct mtk_keypad *g_keypad = NULL;
 
 static irqreturn_t kpd_volumeup_irq_handler(int irq, void *dev_id);
 static void kpd_volumeup_task_process(unsigned long data);
-static DECLARE_TASKLET(kpd_volumekey_up_tasklet, kpd_volumeup_task_process, 0);
+static DECLARE_TASKLET_OLD(kpd_volumekey_up_tasklet, kpd_volumeup_task_process);
 static irqreturn_t kpd_volumedown_irq_handler(int irq, void *dev_id);
 static void kpd_volumedown_task_process(unsigned long data);
-static DECLARE_TASKLET(kpd_volumekey_down_tasklet, kpd_volumedown_task_process, 0);
+static DECLARE_TASKLET_OLD(kpd_volumekey_down_tasklet, kpd_volumedown_task_process);
 
 int aee_kpd_enable = 1;
 
