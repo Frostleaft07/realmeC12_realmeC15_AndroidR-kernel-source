@@ -213,6 +213,8 @@ jobs:
         tag_name: ${{ github.run_id }}
         body: |
           Variant: ${{ github.event.inputs.kernelsu_variant }}
+          sukisubranch: ${{ github.event.inputs.sukisu_branch }}
+          config: ${{ github.event.inputs.defconfig }}
           KPM: ${{ github.event.inputs.kpm }}
           Hook: ${{ github.event.inputs.hook }}
           branch: ${{ github.event.inputs.branch }}
