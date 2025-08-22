@@ -183,7 +183,7 @@ jobs:
         else 
           echo "tanpa KPM"
         fi
-
+      continue-on-error: true
 
     - name: anykernel ~ zipping
       run: |
@@ -203,7 +203,8 @@ jobs:
          -F message_thread_id="${{ secrets.TOPIC_ID }}" \
          -F caption="$(echo -e "$(date)\n\nRMX2185 UI2\n\nCommit: $(git log -1 --pretty='%h - %s (%ci)')")" \
          -F document=@"$FILE_PATH" > /dev/null 2>&1
-         
+      continue-on-error: true
+
     - name: Upload to Release
       uses: softprops/action-gh-release@v2
       with:
