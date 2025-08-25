@@ -9,7 +9,7 @@ on:
         default: 'endfield'
         type: choice
         options:
-          - endfield
+          - built-in
           - 4.19-upstream
       kernelsu_variant:
         description: 'KernelSU variant'
