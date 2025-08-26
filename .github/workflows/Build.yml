@@ -4,13 +4,11 @@ on:
   workflow_dispatch:
     inputs:
       branch:
-        description: 'select branch'
+        description: 'select branch or id commit'
         required: true
-        default: 'endfield'
-        type: choice
-        options:
-          - built-in
-          - 4.19-upstream
+        default: '4.19-upstream'
+        type: string
+        
       kernelsu_variant:
         description: 'KernelSU variant'
         required: true
