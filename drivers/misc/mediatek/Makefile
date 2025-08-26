@@ -1,5 +1,4 @@
 export MTK_PLATFORM := $(subst ",,$(CONFIG_MTK_PLATFORM))
-subdir-ccflags-y += -Werror
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/$(MTK_PLATFORM)/include
 subdir-ccflags-y += -I$(srctree)/drivers/misc/mediatek/include/mt-plat/
@@ -124,3 +123,4 @@ obj-$(CONFIG_MTK_GIC_EXT) += ext_gic/
 obj-$(CONFIG_MTK_SYS_CIRQ) += cirq/
 obj-$(CONFIG_MTK_SECURITY_SW_SUPPORT) += masp/
 obj-y += rps/
+obj-y += met_drv_v2/
