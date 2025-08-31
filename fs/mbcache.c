@@ -126,10 +126,18 @@ EXPORT_SYMBOL(mb_cache_entry_create);
 void __mb_cache_entry_free(struct mb_cache *cache, struct mb_cache_entry *entry)
 {
 	struct hlist_bl_head *head;
+	if (!entry) {
+        pr_info("mbcache: attempt to free NULL entry\n");
+        return;
+	}
 
 	head = mb_cache_entry_head(cache, entry->e_key);
 	hlist_bl_lock(head);
+	if (!hlist_bl_unhashed(&entry->e_hash_list)) {
 	hlist_bl_del(&entry->e_hash_list);
+	} else {
+        pr_info("mbcache: entry already removed from hash list: %p\n", entry);
+	}
 	hlist_bl_unlock(head);
 	kmem_cache_free(mb_entry_cache, entry);
 }
