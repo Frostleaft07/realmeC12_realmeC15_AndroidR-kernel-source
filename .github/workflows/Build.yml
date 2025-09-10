@@ -55,11 +55,6 @@ on:
         required: true
         default: 'Darkness'
         type: string
-      timezone:
-        description: 'set timezone'
-        required: true
-        default: 'Asia/Jakarta'
-        type: string
       hook:
         description: 'hook manual/tracepoint (hanya SUKISU)'
         required: true
@@ -73,7 +68,7 @@ env:
   KBUILD_BUILD_USER: ${{ github.event.inputs.build_user }}
   KBUILD_BUILD_HOST: ${{ github.event.inputs.build_host }}
   LOCALVERSION: ${{ github.event.inputs.localversion }}
-  TZ: ${{ github.event.inputs.timezone }}
+  TZ: Asia/Jakarta
 
 jobs:
   build:
