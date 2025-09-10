@@ -182,7 +182,7 @@ jobs:
       run: |
          KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
          ZIP=Endfield_${KSU_VARIANT}_${{ env.DATE }}_RMX2180_RUI2.zip
-         git clone https://github.com/Frostleaft07/AnyKernel3 -b mastah ~/any/
+         git clone https://github.com/Frostleaft07/AnyKernel3 -b Nethunter ~/any/
          mv ~/out/arch/arm64/boot/Image.gz ~/any/
          cd ~/any/ ; zip -r9 $ZIP *
 
