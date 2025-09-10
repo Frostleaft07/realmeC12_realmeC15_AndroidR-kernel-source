@@ -58,7 +58,7 @@ on:
       hook:
         description: 'hook manual/tracepoint (hanya SUKISU)'
         required: true
-        default: 'manual'
+        default: 'tracepoint'
         type: choice
         options:
           - manual
