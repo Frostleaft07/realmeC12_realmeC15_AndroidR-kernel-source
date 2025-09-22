@@ -44,7 +44,7 @@ extern int wifi_pm_get_mod_type(void);
 
 extern void wifi_pm_power(int on);
 #ifdef CONFIG_GPIO_WAKEUP
-extern unsigned int oob_irqx;
+extern unsigned int oob_irq;
 #endif
 #endif /* CONFIG_MMC */
 
@@ -53,7 +53,7 @@ extern unsigned int oob_irqx;
  *	0:	power on successfully
  *	others: power on failed
  */
-int platform_wifi_power_onx(void)
+int platform_wifi_power_on(void)
 {
 	int ret = 0;
 
@@ -104,7 +104,7 @@ int platform_wifi_power_onx(void)
 		} else {
 			gpio_eint_wlan = val.gpio.gpio;
 #ifdef CONFIG_PLATFORM_ARM_SUN8I
-			oob_irqx = gpio_to_irq(gpio_eint_wlan);
+			oob_irq = gpio_to_irq(gpio_eint_wlan);
 #endif
 		}
 #endif /* CONFIG_GPIO_WAKEUP */
@@ -114,7 +114,7 @@ int platform_wifi_power_onx(void)
 	return ret;
 }
 
-void platform_wifi_power_offx(void)
+void platform_wifi_power_off(void)
 {
 #ifdef CONFIG_MMC
 #if defined(CONFIG_PLATFORM_ARM_SUN6I) || defined(CONFIG_PLATFORM_ARM_SUN7I)

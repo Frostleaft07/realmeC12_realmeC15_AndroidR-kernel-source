@@ -104,7 +104,6 @@
 	typedef void timer_hdl_return;
 	typedef void* timer_hdl_context;
 	typedef struct work_struct _workitem;
-	typedef struct task _tasklet;
 
 #define   KERNEL_VERSION(a,b,c) (((a) << 16) + ((b) << 8) + (c))
 /* emulate a modern version */
@@ -154,7 +153,7 @@ struct work_struct {
 #define spin_unlock_irqrestore mtx_unlock_irqrestore
 #define spin_unlock_bh mtx_unlock_irqrestore
 #define mtx_unlock_irqrestore(lock,x)    mtx_unlock(lock);
-extern void	_rtw_spinlockx_init(_lock *plock);
+extern void	_rtw_spinlock_init(_lock *plock);
 
 //modify private structure to match freebsd
 #define BITS_PER_LONG 32
@@ -450,7 +449,7 @@ static inline void __skb_queue_head_init(struct sk_buff_head *list)
  */
 static inline void skb_queue_head_init(struct sk_buff_head *list)
 {
-	_rtw_spinlockx_init(&list->lock);
+	_rtw_spinlock_init(&list->lock);
 	__skb_queue_head_init(list);
 }
 unsigned long copy_from_user(void *to, const void *from, unsigned long n);
@@ -740,7 +739,7 @@ typedef uint32_t ATOMIC_T ;
 
 #define rtw_netdev_priv(netdev) (((struct ifnet *)netdev)->if_softc)
 
-#define rtw_free_netdevx(netdev) if_free((netdev))
+#define rtw_free_netdev(netdev) if_free((netdev))
 
 #define NDEV_FMT "%s"
 #define NDEV_ARG(ndev) ""

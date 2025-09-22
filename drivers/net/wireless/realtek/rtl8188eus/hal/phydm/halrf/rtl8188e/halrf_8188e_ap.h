@@ -13,8 +13,8 @@
  *
  *****************************************************************************/
 
-#ifndef __HALRF_8188E_H__
-#define __HALRF_8188E_H__
+#ifndef __HAL_PHY_RF_8188E_H__
+#define __HAL_PHY_RF_8188E_H__
 
 /*--------------------------Define Parameters-------------------------------*/
 #define	IQK_DELAY_TIME_88E		10		/* ms */
@@ -23,7 +23,7 @@
 
 #include "../halphyrf_ap.h"
 
-void configure_txpower_trackx_8188e(
+void configure_txpower_track_8188e(
 	struct txpwrtrack_cfg	*config
 );
 
@@ -96,9 +96,9 @@ _phy_path_a_stand_by(
 );
 
 void
-halrf_rf_lna_settingx_8188e(
+halrf_rf_lna_setting_8188e(
 	struct dm_struct	*dm,
-	enum halrf_lna_set type
+	enum phydm_lna_set type
 );
 
-#endif	/*#ifndef __HALRF_8188E_H__*/
+#endif	/*  #ifndef __HAL_PHY_RF_8188E_H__ */

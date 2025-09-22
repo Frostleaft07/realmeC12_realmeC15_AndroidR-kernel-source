@@ -286,17 +286,13 @@
 	SET_BITS_TO_LE_4BYTE(__pTxDesc+24, 16, 3, __Value)
 
 /* Dword 7 */
-#ifdef CONFIG_PCI_HCI
+#if (DEV_BUS_TYPE == RT_PCI_INTERFACE)
 #define SET_TX_DESC_TX_BUFFER_SIZE_8723D(__pTxDesc, __Value) \
 	SET_BITS_TO_LE_4BYTE(__pTxDesc+28, 0, 16, __Value)
-#endif
-
-#ifdef CONFIG_USB_HCI
+#elif(DEV_BUS_TYPE == RT_USB_INTERFACE)
 #define SET_TX_DESC_TX_DESC_CHECKSUM_8723D(__pTxDesc, __Value) \
 	SET_BITS_TO_LE_4BYTE(__pTxDesc+28, 0, 16, __Value)
-#endif
-
-#ifdef CONFIG_SDIO_HCI
+#else
 #define SET_TX_DESC_TX_TIMESTAMP_8723D(__pTxDesc, __Value) \
 	SET_BITS_TO_LE_4BYTE(__pTxDesc+28, 6, 18, __Value)
 #endif
@@ -503,7 +499,7 @@ void fill_txdesc_bmc_tx_rate(struct pkt_attrib *pattrib, u8 *ptxdesc);
 	s32	 rtl8723du_hal_xmitframe_enqueue(_adapter *padapter, struct xmit_frame *pxmitframe);
 	void rtl8723du_xmit_tasklet(void *priv);
 	s32 rtl8723du_xmitframe_complete(_adapter *padapter, struct xmit_priv *pxmitpriv, struct xmit_buf *pxmitbuf);
-	void _dbg_dump_tx_infox(_adapter	*padapter, int frame_tag, struct tx_desc *ptxdesc);
+	void _dbg_dump_tx_info(_adapter	*padapter, int frame_tag, struct tx_desc *ptxdesc);
 #endif
 
 #ifdef CONFIG_PCI_HCI

@@ -15,11 +15,11 @@
 #ifndef __RTL8703B_RF_H__
 #define __RTL8703B_RF_H__
 
-int	PHY_RF6052_Config8703B(PADAPTER		Adapter);
+int	PHY_RF6052_Config8703B(IN	PADAPTER		Adapter);
 
-void
-PHY_RF6052SetBandwidthx8703B(
-		PADAPTER				Adapter,
-		enum channel_width		Bandwidth);
+VOID
+PHY_RF6052SetBandwidth8703B(
+	IN	PADAPTER				Adapter,
+	IN	enum channel_width		Bandwidth);
 
 #endif

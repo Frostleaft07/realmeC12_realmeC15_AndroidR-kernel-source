@@ -17,20 +17,20 @@
 #include <hal_data.h>
 #include <rtw_sreset.h>
 
-void sreset_init_valuex(_adapter *padapter)
+void sreset_init_value(_adapter *padapter)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
 	struct sreset_priv *psrtpriv = &pHalData->srestpriv;
 
-	_rtw_mutex_initx(&psrtpriv->silentreset_mutex);
+	_rtw_mutex_init(&psrtpriv->silentreset_mutex);
 	psrtpriv->silent_reset_inprogress = _FALSE;
 	psrtpriv->Wifi_Error_Status = WIFI_STATUS_SUCCESS;
 	psrtpriv->last_tx_time = 0;
 	psrtpriv->last_tx_complete_time = 0;
 #endif
 }
-void sreset_resetx_value(_adapter *padapter)
+void sreset_reset_value(_adapter *padapter)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
@@ -42,17 +42,18 @@ void sreset_resetx_value(_adapter *padapter)
 #endif
 }
 
-u8 sreset_get_wifi_statusx(_adapter *padapter)
+u8 sreset_get_wifi_status(_adapter *padapter)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
 	struct sreset_priv *psrtpriv = &pHalData->srestpriv;
+
 	u8 status = WIFI_STATUS_SUCCESS;
 	u32 val32 = 0;
-
+	_irqL irqL;
 	if (psrtpriv->silent_reset_inprogress == _TRUE)
 		return status;
-	val32 = rtw_read32x(padapter, REG_TXDMA_STATUS);
+	val32 = rtw_read32(padapter, REG_TXDMA_STATUS);
 	if (val32 == 0xeaeaeaea)
 		psrtpriv->Wifi_Error_Status = WIFI_IF_NOT_EXIST;
 	else if (val32 != 0) {
@@ -75,7 +76,7 @@ u8 sreset_get_wifi_statusx(_adapter *padapter)
 #endif
 }
 
-void sreset_set_wifi_error_statusx(_adapter *padapter, u32 status)
+void sreset_set_wifi_error_status(_adapter *padapter, u32 status)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
@@ -83,7 +84,7 @@ void sreset_set_wifi_error_statusx(_adapter *padapter, u32 status)
 #endif
 }
 
-void sreset_set_trigger_pointx(_adapter *padapter, s32 tgp)
+void sreset_set_trigger_point(_adapter *padapter, s32 tgp)
 {
 #if defined(DBG_CONFIG_ERROR_DETECT)
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
@@ -91,7 +92,7 @@ void sreset_set_trigger_pointx(_adapter *padapter, s32 tgp)
 #endif
 }
 
-bool sreset_inprogressx(_adapter *padapter)
+bool sreset_inprogress(_adapter *padapter)
 {
 #if defined(DBG_CONFIG_ERROR_RESET)
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
@@ -101,11 +102,13 @@ bool sreset_inprogressx(_adapter *padapter)
 #endif
 }
 
-void sreset_restore_security_stationx(_adapter *padapter)
+void sreset_restore_security_station(_adapter *padapter)
 {
+	u8 EntryId = 0;
 	struct mlme_priv *mlmepriv = &padapter->mlmepriv;
 	struct sta_priv *pstapriv = &padapter->stapriv;
 	struct sta_info *psta;
+	struct security_priv *psecuritypriv = &(padapter->securitypriv);
 	struct mlme_ext_info	*pmlmeinfo = &padapter->mlmeextpriv.mlmext_info;
 
 	{
@@ -120,98 +123,116 @@ void sreset_restore_security_stationx(_adapter *padapter)
 #endif
 		} else
 			val8 = 0xcf;
-		rtw_hal_set_hwregx(padapter, HW_VAR_SEC_CFG, (u8 *)(&val8));
+		rtw_hal_set_hwreg(padapter, HW_VAR_SEC_CFG, (u8 *)(&val8));
 	}
 
 	if ((padapter->securitypriv.dot11PrivacyAlgrthm == _TKIP_) ||
 	    (padapter->securitypriv.dot11PrivacyAlgrthm == _AES_)) {
-		psta = rtw_get_stainfox(pstapriv, get_bssid(mlmepriv));
+		psta = rtw_get_stainfo(pstapriv, get_bssid(mlmepriv));
 		if (psta == NULL) {
 			/* DEBUG_ERR( ("Set wpa_set_encryption: Obtain Sta_info fail\n")); */
 		} else {
 			/* pairwise key */
-			rtw_setstakey_cmdx(padapter, psta, UNICAST_KEY, _FALSE);
+			rtw_setstakey_cmd(padapter, psta, UNICAST_KEY, _FALSE);
 			/* group key */
-			rtw_set_keyx(padapter, &padapter->securitypriv, padapter->securitypriv.dot118021XGrpKeyid, 0, _FALSE);
+			rtw_set_key(padapter, &padapter->securitypriv, padapter->securitypriv.dot118021XGrpKeyid, 0, _FALSE);
 		}
 	}
 }
 
-void sreset_restore_network_stationx(_adapter *padapter)
+void sreset_restore_network_station(_adapter *padapter)
 {
 	struct mlme_priv *mlmepriv = &padapter->mlmepriv;
 	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
 	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 	u8 doiqk = _FALSE;
 
-	rtw_setopmode_cmdx(padapter, Ndis802_11Infrastructure, RTW_CMDF_DIRECTLY);
+#if 0
+	{
+		/* ======================================================= */
+		/* reset related register of Beacon control */
+
+		/* set MSR to nolink */
+		Set_MSR(padapter, _HW_STATE_NOLINK_);
+		/* reject all data frame */
+		rtw_write16(padapter, REG_RXFLTMAP2, 0x00);
+		/* reset TSF */
+		rtw_write8(padapter, REG_DUAL_TSF_RST, (BIT(0) | BIT(1)));
+
+		/* disable update TSF */
+		SetBcnCtrlReg(padapter, BIT(4), 0);
+
+		/* ======================================================= */
+	}
+#endif
+
+	rtw_setopmode_cmd(padapter, Ndis802_11Infrastructure, RTW_CMDF_DIRECTLY);
 
 	{
 		u8 threshold;
 #ifdef CONFIG_USB_HCI
 		/* TH=1 => means that invalidate usb rx aggregation */
 		/* TH=0 => means that validate usb rx aggregation, use init value. */
-#ifdef CONFIG_80211N_HT
 		if (mlmepriv->htpriv.ht_option) {
 			if (padapter->registrypriv.wifi_spec == 1)
 				threshold = 1;
 			else
 				threshold = 0;
-			rtw_hal_set_hwregx(padapter, HW_VAR_RXDMA_AGG_PG_TH, (u8 *)(&threshold));
+			rtw_hal_set_hwreg(padapter, HW_VAR_RXDMA_AGG_PG_TH, (u8 *)(&threshold));
 		} else {
 			threshold = 1;
-			rtw_hal_set_hwregx(padapter, HW_VAR_RXDMA_AGG_PG_TH, (u8 *)(&threshold));
+			rtw_hal_set_hwreg(padapter, HW_VAR_RXDMA_AGG_PG_TH, (u8 *)(&threshold));
 		}
-#endif /* CONFIG_80211N_HT */
 #endif
 	}
 
 	doiqk = _TRUE;
-	rtw_hal_set_hwregx(padapter, HW_VAR_DO_IQK , &doiqk);
+	rtw_hal_set_hwreg(padapter, HW_VAR_DO_IQK , &doiqk);
 
-	set_channel_bwmodex(padapter, pmlmeext->cur_channel, pmlmeext->cur_ch_offset, pmlmeext->cur_bwmode);
+	set_channel_bwmode(padapter, pmlmeext->cur_channel, pmlmeext->cur_ch_offset, pmlmeext->cur_bwmode);
 
 	doiqk = _FALSE;
-	rtw_hal_set_hwregx(padapter , HW_VAR_DO_IQK , &doiqk);
+	rtw_hal_set_hwreg(padapter , HW_VAR_DO_IQK , &doiqk);
 	/* disable dynamic functions, such as high power, DIG */
 	/*rtw_phydm_func_disable_all(padapter);*/
 
-	rtw_hal_set_hwregx(padapter, HW_VAR_BSSID, pmlmeinfo->network.MacAddress);
+	rtw_hal_set_hwreg(padapter, HW_VAR_BSSID, pmlmeinfo->network.MacAddress);
 
 	{
 		u8	join_type = 0;
-
-		rtw_hal_rcr_set_chk_bssidx(padapter, MLME_STA_CONNECTING);
-		rtw_hal_set_hwregx(padapter, HW_VAR_MLME_JOIN, (u8 *)(&join_type));
+		rtw_hal_set_hwreg(padapter, HW_VAR_MLME_JOIN, (u8 *)(&join_type));
+		rtw_hal_rcr_set_chk_bssid(padapter, MLME_STA_CONNECTING);
 	}
 
-	Set_MSRx(padapter, (pmlmeinfo->state & 0x3));
+	Set_MSR(padapter, (pmlmeinfo->state & 0x3));
 
-	mlmeext_joinbss_event_callbackx(padapter, 1);
+	mlmeext_joinbss_event_callback(padapter, 1);
 	/* restore Sequence No. */
-	rtw_hal_set_hwregx(padapter, HW_VAR_RESTORE_HW_SEQ, 0);
+	rtw_hal_set_hwreg(padapter, HW_VAR_RESTORE_HW_SEQ, 0);
 
-	sreset_restore_security_stationx(padapter);
+	sreset_restore_security_station(padapter);
 }
 
 
-void sreset_restore_network_statusx(_adapter *padapter)
+void sreset_restore_network_status(_adapter *padapter)
 {
 	struct mlme_priv *mlmepriv = &padapter->mlmepriv;
+	struct mlme_ext_priv	*pmlmeext = &padapter->mlmeextpriv;
+	struct mlme_ext_info	*pmlmeinfo = &(pmlmeext->mlmext_info);
 
-	if (check_fwstatex(mlmepriv, WIFI_STATION_STATE)) {
+	if (check_fwstate(mlmepriv, WIFI_STATION_STATE)) {
 		RTW_INFO(FUNC_ADPT_FMT" fwstate:0x%08x - WIFI_STATION_STATE\n", FUNC_ADPT_ARG(padapter), get_fwstate(mlmepriv));
-		sreset_restore_network_stationx(padapter);
+		sreset_restore_network_station(padapter);
 	} else if (MLME_IS_AP(padapter) || MLME_IS_MESH(padapter)) {
 		RTW_INFO(FUNC_ADPT_FMT" %s\n", FUNC_ADPT_ARG(padapter), MLME_IS_AP(padapter) ? "AP" : "MESH");
-		rtw_ap_restore_networkx(padapter);
-	} else if (check_fwstatex(mlmepriv, WIFI_ADHOC_STATE))
+		rtw_ap_restore_network(padapter);
+	} else if (check_fwstate(mlmepriv, WIFI_ADHOC_STATE))
 		RTW_INFO(FUNC_ADPT_FMT" fwstate:0x%08x - WIFI_ADHOC_STATE\n", FUNC_ADPT_ARG(padapter), get_fwstate(mlmepriv));
 	else
 		RTW_INFO(FUNC_ADPT_FMT" fwstate:0x%08x - ???\n", FUNC_ADPT_ARG(padapter), get_fwstate(mlmepriv));
 }
 
-void sreset_stop_adapterx(_adapter *padapter)
+void sreset_stop_adapter(_adapter *padapter)
 {
 	struct mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
 	struct xmit_priv	*pxmitpriv = &padapter->xmitpriv;
@@ -223,24 +244,24 @@ void sreset_stop_adapterx(_adapter *padapter)
 
 	rtw_netif_stop_queue(padapter->pnetdev);
 
-	rtw_cancel_all_timerx(padapter);
+	rtw_cancel_all_timer(padapter);
 
 	/* TODO: OS and HCI independent */
 #if defined(PLATFORM_LINUX) && defined(CONFIG_USB_HCI)
 	tasklet_kill(&pxmitpriv->xmit_tasklet);
 #endif
 
-	if (check_fwstatex(pmlmepriv, _FW_UNDER_SURVEY))
-		rtw_scan_abortx(padapter);
+	if (check_fwstate(pmlmepriv, _FW_UNDER_SURVEY))
+		rtw_scan_abort(padapter);
 
-	if (check_fwstatex(pmlmepriv, _FW_UNDER_LINKING)) {
-		rtw_set_to_roamx(padapter, 0);
-		rtw_join_timeout_handlerx(padapter);
+	if (check_fwstate(pmlmepriv, _FW_UNDER_LINKING)) {
+		rtw_set_to_roam(padapter, 0);
+		rtw_join_timeout_handler(padapter);
 	}
 
 }
 
-void sreset_start_adapterx(_adapter *padapter)
+void sreset_start_adapter(_adapter *padapter)
 {
 	struct mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
 	struct xmit_priv	*pxmitpriv = &padapter->xmitpriv;
@@ -250,8 +271,8 @@ void sreset_start_adapterx(_adapter *padapter)
 
 	RTW_INFO(FUNC_ADPT_FMT"\n", FUNC_ADPT_ARG(padapter));
 
-	if (check_fwstatex(pmlmepriv, _FW_LINKED))
-		sreset_restore_network_statusx(padapter);
+	if (check_fwstate(pmlmepriv, _FW_LINKED))
+		sreset_restore_network_status(padapter);
 
 	/* TODO: OS and HCI independent */
 #if defined(PLATFORM_LINUX) && defined(CONFIG_USB_HCI)
@@ -264,7 +285,7 @@ void sreset_start_adapterx(_adapter *padapter)
 	rtw_netif_wake_queue(padapter->pnetdev);
 }
 
-void sreset_resetx(_adapter *padapter)
+void sreset_reset(_adapter *padapter)
 {
 #ifdef DBG_CONFIG_ERROR_RESET
 	HAL_DATA_TYPE	*pHalData = GET_HAL_DATA(padapter);
@@ -273,7 +294,7 @@ void sreset_resetx(_adapter *padapter)
 	struct mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
 	struct xmit_priv	*pxmitpriv = &padapter->xmitpriv;
 	_irqL irqL;
-	systime start = rtw_get_current_timex();
+	systime start = rtw_get_current_time();
 	struct dvobj_priv *psdpriv = padapter->dvobj;
 	struct debug_priv *pdbgpriv = &psdpriv->drv_dbg;
 
@@ -291,18 +312,18 @@ void sreset_resetx(_adapter *padapter)
 	psrtpriv->silent_reset_inprogress = _TRUE;
 	pwrpriv->change_rfpwrstate = rf_off;
 
-	rtw_mi_sreset_adapter_hdlx(padapter, _FALSE);/*sreset_stop_adapterx*/
+	rtw_mi_sreset_adapter_hdl(padapter, _FALSE);/*sreset_stop_adapter*/
 #ifdef CONFIG_IPS
 	_ips_enter(padapter);
 	_ips_leave(padapter);
 #endif
-	rtw_mi_sreset_adapter_hdlx(padapter, _TRUE);/*sreset_start_adapterx*/
+	rtw_mi_sreset_adapter_hdl(padapter, _TRUE);/*sreset_start_adapter*/
 
 	psrtpriv->silent_reset_inprogress = _FALSE;
 
 	_exit_pwrlock(&pwrpriv->lock);
 
-	RTW_INFO("%s done in %d ms\n", __FUNCTION__, rtw_get_passing_time_msx(start));
+	RTW_INFO("%s done in %d ms\n", __FUNCTION__, rtw_get_passing_time_ms(start));
 	pdbgpriv->dbg_sreset_cnt++;
 
 	psrtpriv->self_dect_fw = _FALSE;

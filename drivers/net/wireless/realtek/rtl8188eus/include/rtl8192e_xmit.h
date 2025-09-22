@@ -317,11 +317,9 @@ typedef struct txdescriptor_8192e {
 #define SET_TX_DESC_ANTSEL_D_92E(__pTxDesc, __Value) SET_BITS_TO_LE_4BYTE(__pTxDesc+24, 25, 3, __Value)
 
 /* Dword 7 */
-#ifdef CONFIG_PCI_HCI
+#if (DEV_BUS_TYPE == RT_PCI_INTERFACE)
 	#define SET_TX_DESC_TX_BUFFER_SIZE_92E(__pTxDesc, __Value)		SET_BITS_TO_LE_4BYTE(__pTxDesc+28, 0, 16, __Value)
-#endif
-
-#if defined(CONFIG_SDIO_HCI) || defined(CONFIG_USB_HCI)
+#else
 	#define SET_TX_DESC_TX_DESC_CHECKSUM_92E(__pTxDesc, __Value) SET_BITS_TO_LE_4BYTE(__pTxDesc+28, 0, 16, __Value)
 #endif
 #define SET_TX_DESC_USB_TXAGG_NUM_92E(__pTxDesc, __Value) SET_BITS_TO_LE_4BYTE(__pTxDesc+28, 24, 8, __Value)
@@ -429,7 +427,7 @@ struct txrpt_ccx_92e {
 	void UpdateEarlyModeInfo8192E(struct xmit_priv *pxmitpriv, struct xmit_buf *pxmitbuf);
 #endif
 s32	rtl8192e_init_xmit_priv(_adapter *padapter);
-void _dbg_dump_tx_infox(_adapter	*padapter, int frame_tag, u8 *ptxdesc);
+void _dbg_dump_tx_info(_adapter	*padapter, int frame_tag, u8 *ptxdesc);
 
 void rtl8192e_fill_fake_txdesc(PADAPTER	padapter, u8 *pDesc, u32 BufferLen,
 			       u8 IsPsPoll, u8	IsBTQosNull, u8 bDataFrame);

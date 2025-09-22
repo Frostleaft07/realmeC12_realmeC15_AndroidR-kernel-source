@@ -13,38 +13,41 @@
  *
  *****************************************************************************/
 
-/*Image2HeaderVersion: 3.5.2*/
+/*Image2HeaderVersion: 2.18*/
 #if (RTL8188E_SUPPORT == 1)
 #ifndef __INC_MP_BB_HW_IMG_8188E_H
 #define __INC_MP_BB_HW_IMG_8188E_H
 
 
 /******************************************************************************
-*                           agc_tab.TXT
+*                           AGC_TAB.TXT
 ******************************************************************************/
 
 void
-odm_read_and_config_mp_8188e_agc_tab( /* tc: Test Chip, mp: mp Chip*/
-				     struct dm_struct *dm);
+odm_read_and_config_mp_8188e_agc_tab(/* TC: Test Chip, MP: MP Chip*/
+	struct dm_struct  *dm
+);
 u32 odm_get_version_mp_8188e_agc_tab(void);
 
 /******************************************************************************
-*                           phy_reg.TXT
+*                           PHY_REG.TXT
 ******************************************************************************/
 
 void
-odm_read_and_config_mp_8188e_phy_reg( /* tc: Test Chip, mp: mp Chip*/
-				     struct dm_struct *dm);
+odm_read_and_config_mp_8188e_phy_reg(/* TC: Test Chip, MP: MP Chip*/
+	struct dm_struct  *dm
+);
 u32 odm_get_version_mp_8188e_phy_reg(void);
 
 /******************************************************************************
-*                           phy_reg_pg.TXT
+*                           PHY_REG_PG.TXT
 ******************************************************************************/
 
 void
-odm_read_and_config_mp_8188e_phy_reg_pg( /* tc: Test Chip, mp: mp Chip*/
-					struct dm_struct *dm);
-u32	odm_get_version_mp_8188e_phy_reg_pg(void);
+odm_read_and_config_mp_8188e_phy_reg_pg(/* TC: Test Chip, MP: MP Chip*/
+	struct dm_struct  *dm
+);
+u32 odm_get_version_mp_8188e_phy_reg_pg(void);
 
 #endif
 #endif /* end of HWIMG_SUPPORT*/
