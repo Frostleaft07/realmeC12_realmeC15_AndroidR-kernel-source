@@ -19,10 +19,7 @@
 
 int rtw_rhashtable_walk_enter(rtw_rhashtable *ht, rtw_rhashtable_iter *iter)
 {
-#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 9, 0))
-	rhashtable_walk_enter((ht), (iter));
-	return 0;
-#elif (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
+#if (LINUX_VERSION_CODE >= KERNEL_VERSION(4, 7, 0))
 	return rhashtable_walk_init((ht), (iter), GFP_ATOMIC);
 #else
 	/* kernel >= 4.4.0 rhashtable_walk_init use GFP_KERNEL to alloc, spin_lock for assignment */
@@ -38,7 +35,7 @@ int rtw_rhashtable_walk_enter(rtw_rhashtable *ht, rtw_rhashtable_iter *iter)
 	spin_lock(&ht->lock);
 	iter->walker->tbl =
 		rcu_dereference_protected(ht->tbl, lockdep_is_held(&ht->lock));
-	list_addx(&iter->walker->list, &iter->walker->tbl->walkers);
+	list_add(&iter->walker->list, &iter->walker->tbl->walkers);
 	spin_unlock(&ht->lock);
 
 	return 0;

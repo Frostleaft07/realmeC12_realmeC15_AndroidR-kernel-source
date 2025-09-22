@@ -13,19 +13,20 @@
  *
  *****************************************************************************/
 
-/*Image2HeaderVersion: 3.5.2*/
+/*Image2HeaderVersion: 2.18*/
 #if (RTL8188E_SUPPORT == 1)
 #ifndef __INC_MP_MAC_HW_IMG_8188E_H
 #define __INC_MP_MAC_HW_IMG_8188E_H
 
 
 /******************************************************************************
-*                           mac_reg.TXT
+*                           MAC_REG.TXT
 ******************************************************************************/
 
 void
-odm_read_and_config_mp_8188e_mac_reg( /* tc: Test Chip, mp: mp Chip*/
-				     struct dm_struct *dm);
+odm_read_and_config_mp_8188e_mac_reg(/* TC: Test Chip, MP: MP Chip*/
+	struct dm_struct  *dm
+);
 u32 odm_get_version_mp_8188e_mac_reg(void);
 
 #endif

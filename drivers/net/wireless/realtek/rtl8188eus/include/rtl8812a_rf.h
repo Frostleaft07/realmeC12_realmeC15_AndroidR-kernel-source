@@ -15,14 +15,14 @@
 #ifndef __RTL8812A_RF_H__
 #define __RTL8812A_RF_H__
 
-void
-PHY_RF6052SetBandwidthx8812(
-		PADAPTER				Adapter,
-		enum channel_width		Bandwidth);
+VOID
+PHY_RF6052SetBandwidth8812(
+	IN	PADAPTER				Adapter,
+	IN	enum channel_width		Bandwidth);
 
 
 int
 PHY_RF6052_Config_8812(
-		PADAPTER	Adapter);
+	IN	PADAPTER	Adapter);
 
 #endif/* __RTL8188E_RF_H__ */

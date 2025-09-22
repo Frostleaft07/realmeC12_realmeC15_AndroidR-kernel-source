@@ -39,34 +39,34 @@
 /*--------------------------Exported Function prototype---------------------*/
 u32
 PHY_QueryBBReg_8188F(
-		PADAPTER	Adapter,
-		u32		RegAddr,
-		u32		BitMask
+	IN	PADAPTER	Adapter,
+	IN	u32		RegAddr,
+	IN	u32		BitMask
 );
 
-void
+VOID
 PHY_SetBBReg_8188F(
-		PADAPTER	Adapter,
-		u32		RegAddr,
-		u32		BitMask,
-		u32		Data
+	IN	PADAPTER	Adapter,
+	IN	u32		RegAddr,
+	IN	u32		BitMask,
+	IN	u32		Data
 );
 
 u32
 PHY_QueryRFReg_8188F(
-		PADAPTER			Adapter,
-		enum rf_path			eRFPath,
-		u32				RegAddr,
-		u32				BitMask
+	IN	PADAPTER			Adapter,
+	IN	enum rf_path			eRFPath,
+	IN	u32				RegAddr,
+	IN	u32				BitMask
 );
 
-void
+VOID
 PHY_SetRFReg_8188F(
-		PADAPTER			Adapter,
-		enum rf_path			eRFPath,
-		u32				RegAddr,
-		u32				BitMask,
-		u32				Data
+	IN	PADAPTER			Adapter,
+	IN	enum rf_path			eRFPath,
+	IN	u32				RegAddr,
+	IN	u32				BitMask,
+	IN	u32				Data
 );
 
 /* MAC/BB/RF HAL config */
@@ -77,48 +77,54 @@ int PHY_RFConfig8188F(PADAPTER	Adapter);
 s32 PHY_MACConfig8188F(PADAPTER padapter);
 
 int
-PHY_ConfigRFWithParaFilex_8188F(
-		PADAPTER			Adapter,
-		u8					*pFileName,
+PHY_ConfigRFWithParaFile_8188F(
+	IN	PADAPTER			Adapter,
+	IN	u8					*pFileName,
 	enum rf_path				eRFPath
 );
 
-void
-PHY_SetTxPowerxIndexx_8188F(
-		PADAPTER			Adapter,
-		u32					PowerIndex,
-		enum rf_path			RFPath,
-		u8					Rate
+VOID
+PHY_SetTxPowerIndex_8188F(
+	IN	PADAPTER			Adapter,
+	IN	u32					PowerIndex,
+	IN	enum rf_path			RFPath,
+	IN	u8					Rate
 );
 
 u8
 PHY_GetTxPowerIndex_8188F(
-		PADAPTER			pAdapter,
-		enum rf_path			RFPath,
-		u8					Rate,
-		u8		BandWidth,
-		u8					Channel,
+	IN	PADAPTER			pAdapter,
+	IN	enum rf_path			RFPath,
+	IN	u8					Rate,
+	IN	u8		BandWidth,
+	IN	u8					Channel,
 	struct txpwr_idx_comp *tic
 );
 
-void
-PHY_SetTxPowerxLevel8188F(
-		PADAPTER		Adapter,
-		u8			channel
+VOID
+PHY_GetTxPowerLevel8188F(
+	IN	PADAPTER		Adapter,
+	OUT s32				*powerlevel
 );
 
-void
+VOID
+PHY_SetTxPowerLevel8188F(
+	IN	PADAPTER		Adapter,
+	IN	u8			channel
+);
+
+VOID
 PHY_SetSwChnlBWMode8188F(
-		PADAPTER			Adapter,
-		u8					channel,
-		enum channel_width	Bandwidth,
-		u8					Offset40,
-		u8					Offset80
+	IN	PADAPTER			Adapter,
+	IN	u8					channel,
+	IN	enum channel_width	Bandwidth,
+	IN	u8					Offset40,
+	IN	u8					Offset80
 );
 
-void phy_set_rf_path_switch_8188f(
-		struct		dm_struct *phydm,
-		bool		bMain
+VOID phy_set_rf_path_switch_8188f(
+	IN	struct		dm_struct *phydm,
+	IN	bool		bMain
 );
 
 void BBTurnOnBlock_8188F(_adapter *adapter);

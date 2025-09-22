@@ -1,80 +1,60 @@
-## rtl8188eus v5.7.6.1
+<p align="center">
+<img src="/.media/rtl8188eus_logo.png" alt="rtl8188eus logo" width="50%"/>
+</p>
 
-# Realtek rtl8188eus &amp; rtl8188eu &amp; rtl8188etv WiFi driver
+Realtek rtl8188eu(s) / rtl8188etv wireless drivers
+==================================================
 
 [![Monitor mode](https://img.shields.io/badge/monitor%20mode-supported-brightgreen.svg)](#)
 [![Frame Injection](https://img.shields.io/badge/frame%20injection-supported-brightgreen.svg)](#)
 [![MESH Mode](https://img.shields.io/badge/mesh%20mode-supported-brightgreen.svg)](#)
-[![GitHub issues](https://img.shields.io/github/issues/aircrack-ng/rtl8188eus.svg)](https://github.com/aircrack-ng/rtl8188eus/issues)
-[![GitHub forks](https://img.shields.io/github/forks/aircrack-ng/rtl8188eus.svg)](https://github.com/aircrack-ng/rtl8188eus/network)
-[![GitHub stars](https://img.shields.io/github/stars/aircrack-ng/rtl8188eus.svg)](https://github.com/aircrack-ng/rtl8188eus/stargazers)
-[![GitHub license](https://img.shields.io/github/license/aircrack-ng/rtl8812au.svg)](https://github.com/aircrack-ng/rtl8188eus/blob/master/LICENSE)<br>
+[![GitHub issues](https://img.shields.io/github/issues/SimplyCEO/rtl8188eus.svg)](https://gitlab.com/SimplyCEO/rtl8188eus/-/issues)
+[![GitHub forks](https://img.shields.io/github/forks/SimplyCEO/rtl8188eus.svg)](https://gitlab.com/SimplyCEO/rtl8188eus/-/forks)
+[![GitHub stars](https://img.shields.io/github/stars/SimplyCEO/rtl8188eus.svg)](https://gitlab.com/SimplyCEO/rtl8188eus/-/starrers)
+[![GitHub license](https://img.shields.io/badge/License-GPL--2.0-informational)](https://gitlab.com/SimplyCEO/rtl8188eus/-/blob/master/LICENSE)<br>
 [![Android](https://img.shields.io/badge/android%20(8)-supported-brightgreen.svg)](#)
 [![aircrack-ng](https://img.shields.io/badge/aircrack--ng-supported-blue.svg)](#)
 
+Trying to find a solution? See [troubleshooting](/docs/TROUBLESHOOTING.md).
 
-# Supports
-* Android 9
-* WPA3-SAE
-* P2P Mode
-* WiFi Direct
-* MESH Support
-* Monitor mode
-* Frame injection
-* Supported up to kernel v5.4+
-... And a bunch of various wifi chipsets
+|   Support         |   Tested  |   Status  |   Description                                     |
+|-------------------|-----------|-----------|---------------------------------------------------|
+|   Android 7+      |   ❌      |   🟡      |   Depends on which kernel version is installed.   |
+|   MESH            |   ❌      |   🟠      |   Not tested yet.                                 |
+|   Monitor Mode    |   ✅      |   🔵      |   Tested and working.                             |
+|   Frame injection |   ✅      |   🔵      |   Tested and working.                             |
+|   Kernel 5.8+     |   ✅      |   🟢      |   Kernel 5.15+ tested.                            |
 
-# Howto download/build/install
-```sh
-1. Clone the repo with "git clone https://github.com/aircrack-ng/rtl8188eus -b v5.7.6.1"
-2. Enter the folder with "cd rtl8188eus"
-2. Then run "make && make install"
-3. And reboot in order to blacklist the module and load this module instead.
+Building
+--------
+
+The quickest compile can presume:
+```shell
+git clone --depth 1 https://gitlab.com/SimplyCEO/rtl8188eus.git
+cd rtl8188eus/
+make -j$(nproc)
+su -c "make install clean"
+su -c "modprobe --remove rtl8xxxu && modprobe 8188eu"
 ```
 
-# MONITOR MODE howto
-Use these steps to enter monitor mode.
-```sh
-$ airmon-ng check-kill
-$ ip link set <interface> down
-$ iw dev <interface> set type monitor
-```
-To set txpower to a higher level.
-```sh
-$ iw <interface> set txpower fixed 3000
-```
+The old driver will be kept, but it need to be deactivated.<br>
+Verify if your kernel is equal or newer than '6.3.x'.<br>
+If it is, then the driver is called `rtl8xxxu`. Otherwise it is `r8188eu`.
 
-Frame injection test may be performed with
-```sh
-$ aireplay -9 <interface>
-```
+All the instructions and explanations can be found by<br>
+[reading the documentation](/docs/BUILDING.md) or by accessing the topics:
 
-# NetworkManager configuration
-Add these lines below to "NetworkManager.conf" and ADD YOUR ADAPTER MAC below [keyfile]
-This will make the Network-Manager ignore the device, and therefor don't cause problems.
-```sh
-[device]
-wifi.scan-rand-mac-address=no
+- [Building for Kali Nethuner](/docs/BUILD_FOR_NETHUNTER.md);
+- [Available Modes](/docs/MODES.md);
+- [Configuring NetworkManager](/docs/NETWORKMANAGER.md);
+- [Managed/Monitor Mode: toggle-script](/docs/OPTIONAL.md).
 
-[ifupdown]
-managed=false
+Credits
+-------
 
-[connection]
-wifi.powersave=0
+Realtek       - https://www.realtek.com<br>
+Alfa Networks - https://www.alfa.com.tw<br>
+aircrack-ng  - https://www.aircrack-ng.org<br>
+Project contributors - https://gitlab.com/SimplyCEO/rtl8188eus/-/graphs/master?ref_type=heads<br>
 
-[main]
-plugins=keyfile
-
-[keyfile]
-unmanaged-devices=mac:A7:A7:A7:A7:A7
-```
-
-# TODO
-* Turn down log level / DEBUG
-  (we want it now for some months just to see)
-
-* Unlock all channels and check the DFS setting
-
-* Implement txpower control
-
-* Remove Windows (NDIS) code
+And all those who are using, requesting support, or teaching. Thanks!
