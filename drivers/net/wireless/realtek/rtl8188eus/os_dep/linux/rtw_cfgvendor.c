@@ -171,7 +171,7 @@ struct sk_buff *rtw_cfg80211_vendor_event_alloc(
 int rtw_cfgvendor_send_async_event(struct wiphy *wiphy,
 	   struct net_device *dev, int event_id, const void  *data, int len)
 {
-	u16 kflags;
+	gfp_t kflags;
 	struct sk_buff *skb;
 
 	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
@@ -252,7 +252,8 @@ int rtw_dev_get_feature_set(struct net_device *dev)
 	feature_set |= WIFI_FEATURE_INFRA;
 
 #ifdef CONFIG_IEEE80211_BAND_5GHZ
-	if (is_supported_5g(adapter_to_regsty(adapter)->wireless_mode))
+	if (is_supported_5g(adapter_to_regsty(adapter)->wireless_mode)
+		&& hal_chk_band_cap(adapter, BAND_CAP_5G)) /* v5.3 has no rtw_init_wireless_mode(), need checking hal spec here */
 		feature_set |= WIFI_FEATURE_INFRA_5G;
 #endif
 
@@ -264,19 +265,6 @@ int rtw_dev_get_feature_set(struct net_device *dev)
 	feature_set |= WIFI_FEATURE_LINK_LAYER_STATS;
 #endif /* CONFIG_RTW_CFGVEDNOR_LLSTATS */
 
-#ifdef CONFIG_RTW_CFGVEDNOR_RSSIMONITOR
-        feature_set |= WIFI_FEATURE_RSSI_MONITOR;
-#endif
-
-#ifdef CONFIG_RTW_CFGVENDOR_WIFI_LOGGER
-	feature_set |= WIFI_FEATURE_LOGGER;
-#endif
-
-#ifdef CONFIG_RTW_WIFI_HAL
-	feature_set |= WIFI_FEATURE_CONFIG_NDO;
-	feature_set |= WIFI_FEATURE_SCAN_RAND;
-#endif
-
 	return feature_set;
 }
 
@@ -287,7 +275,7 @@ int *rtw_dev_get_feature_set_matrix(struct net_device *dev, int *num)
 
 	*num = 0;
 	mem_needed = sizeof(int) * MAX_FEATURE_SET_CONCURRRENT_GROUPS;
-	ret = (int *)rtw_mallocx(mem_needed);
+	ret = (int *)rtw_malloc(mem_needed);
 
 	if (!ret) {
 		RTW_ERR(FUNC_NDEV_FMT" failed to allocate %d bytes\n"
@@ -386,7 +374,7 @@ static int rtw_cfgvendor_get_feature_set_matrix(struct wiphy *wiphy,
 		RTW_ERR(FUNC_NDEV_FMT" Vendor Command reply failed ret:%d\n"
 			, FUNC_NDEV_ARG(wdev_to_ndev(wdev)), err);
 exit:
-	rtw_mfreex((u8 *)reply, sizeof(int) * num);
+	rtw_mfree((u8 *)reply, sizeof(int) * num);
 	return err;
 }
 
@@ -446,7 +434,7 @@ static int rtw_cfgvendor_gscan_get_capabilities(struct wiphy *wiphy,
 		struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	dhd_pno_gscan_capabilities_t *reply = NULL;
 	uint32 reply_len = 0;
 
@@ -473,7 +461,7 @@ static int rtw_cfgvendor_gscan_get_channel_list(struct wiphy *wiphy,
 		struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0, type, band;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	uint16 *reply = NULL;
 	uint32 reply_len = 0, num_channels, mem_needed;
 	struct sk_buff *skb;
@@ -520,7 +508,7 @@ static int rtw_cfgvendor_gscan_get_batch_results(struct wiphy *wiphy,
 		struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	gscan_results_cache_t *results, *iter;
 	uint32 reply_len, complete = 0, num_results_iter;
 	int32 mem_needed;
@@ -604,7 +592,7 @@ static int rtw_cfgvendor_initiate_gscan(struct wiphy *wiphy,
 		       struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	int type, tmp = len;
 	int run = 0xFF;
 	int flush = 0;
@@ -634,7 +622,7 @@ static int rtw_cfgvendor_enable_full_scan_result(struct wiphy *wiphy,
 		struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	int type;
 	bool real_time = FALSE;
 
@@ -658,7 +646,7 @@ static int rtw_cfgvendor_set_scan_cfg(struct wiphy *wiphy,
 		     struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	gscan_scan_params_t *scan_param;
 	int j = 0;
 	int type, tmp, tmp1, tmp2, k = 0;
@@ -750,7 +738,7 @@ static int rtw_cfgvendor_hotlist_cfg(struct wiphy *wiphy,
 		    struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	gscan_hotlist_scan_params_t *hotlist_params;
 	int tmp, tmp1, tmp2, type, j = 0, dummy;
 	const struct nlattr *outer, *inner, *iter;
@@ -816,7 +804,7 @@ static int rtw_cfgvendor_set_batch_scan_cfg(struct wiphy *wiphy,
 		struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0, tmp, type;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	gscan_batch_params_t batch_param;
 	const struct nlattr *iter;
 
@@ -853,7 +841,7 @@ static int rtw_cfgvendor_significant_change_cfg(struct wiphy *wiphy,
 		struct wireless_dev *wdev, const void  *data, int len)
 {
 	int err = 0;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	gscan_swc_params_t *significant_params;
 	int tmp, tmp1, tmp2, type, j = 0;
 	const struct nlattr *outer, *inner, *iter;
@@ -996,7 +984,7 @@ static int rtw_cfgvendor_rtt_set_config(struct wiphy *wiphy, struct wireless_dev
 	const struct nlattr *iter, *iter1, *iter2;
 	int8 eabuf[ETHER_ADDR_STR_LEN];
 	int8 chanbuf[CHANSPEC_STR_LEN];
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 
 	WL_DBG(("In\n"));
 	err = dhd_dev_rtt_register_noti_callback(wdev->netdev, wdev, wl_cfgvendor_rtt_evt);
@@ -1080,7 +1068,7 @@ static int rtw_cfgvendor_rtt_cancel_config(struct wiphy *wiphy, struct wireless_
 	int err = 0, rem, type, target_cnt = 0;
 	const struct nlattr *iter;
 	struct ether_addr *mac_list = NULL, *mac_addr = NULL;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 
 	nla_for_each_attr(iter, data, len, rem) {
 		type = nla_type(iter);
@@ -1118,7 +1106,7 @@ static int rtw_cfgvendor_rtt_get_capability(struct wiphy *wiphy, struct wireless
 		const void *data, int len)
 {
 	int err = 0;
-	struct bcm_cfg80211 *cfg = wiphy_privx(wiphy);
+	struct bcm_cfg80211 *cfg = wiphy_priv(wiphy);
 	rtt_capabilities_t capability;
 
 	err = dhd_dev_rtt_capability(bcmcfg_to_prmry_ndev(cfg), &capability);
@@ -1162,18 +1150,18 @@ static void LinkLayerStats(_adapter *padapter)
 
 	if ( padapter->netif_up == _TRUE ) {
 
-		pwrpriv->on_time = rtw_get_passing_time_msx(pwrpriv->radio_on_start_time);
+		pwrpriv->on_time = rtw_get_passing_time_ms(pwrpriv->radio_on_start_time);
 
-		if (rtw_mi_check_fwstatexx(padapter, _FW_LINKED)) {
+		if (rtw_mi_check_fwstate(padapter, _FW_LINKED)) {
 			if ( pwrpriv->bpower_saving == _TRUE ) {
-				pwrpriv->pwr_saving_time += rtw_get_passing_time_msx(pwrpriv->pwr_saving_start_time);
-				pwrpriv->pwr_saving_start_time = rtw_get_current_timex();
+				pwrpriv->pwr_saving_time += rtw_get_passing_time_ms(pwrpriv->pwr_saving_start_time);
+				pwrpriv->pwr_saving_start_time = rtw_get_current_time();
 			}
 		} else {		
 #ifdef CONFIG_IPS
 			if ( pwrpriv->bpower_saving == _TRUE ) {
-				pwrpriv->pwr_saving_time += rtw_get_passing_time_msx(pwrpriv->pwr_saving_start_time);
-				pwrpriv->pwr_saving_start_time = rtw_get_current_timex();
+				pwrpriv->pwr_saving_time += rtw_get_passing_time_ms(pwrpriv->pwr_saving_start_time);
+				pwrpriv->pwr_saving_start_time = rtw_get_current_time();
 			}
 #else
 			pwrpriv->pwr_saving_time = pwrpriv->on_time;
@@ -1191,7 +1179,7 @@ static void LinkLayerStats(_adapter *padapter)
 		trx_total_bytes = tx_bytes + rx_bytes;
 
 		trx_total_time = pwrpriv->on_time - ps_time;
-
+		
 		if ( trx_total_bytes == 0) {
 			pwrpriv->tx_time = 0;
 			pwrpriv->rx_time = 0;
@@ -1199,17 +1187,17 @@ static void LinkLayerStats(_adapter *padapter)
 
 			/* tx_time = (trx_total_time * tx_total_bytes) / trx_total_bytes; */
 			/* rx_time = (trx_total_time * rx_total_bytes) / trx_total_bytes; */
-
+		
 			tmp = (tx_bytes * trx_total_time);
-			tmp = rtw_division64x(tmp, trx_total_bytes);
+			tmp = rtw_division64(tmp, trx_total_bytes);
 			pwrpriv->tx_time = tmp;
 
 			tmp = (rx_bytes * trx_total_time);
-			tmp = rtw_division64x(tmp, trx_total_bytes);
+			tmp = rtw_division64(tmp, trx_total_bytes);
 			pwrpriv->rx_time = tmp;		
 
 		}
-	
+		
 	}
 	else {
 			pwrpriv->on_time = 0;
@@ -1218,12 +1206,12 @@ static void LinkLayerStats(_adapter *padapter)
 	}
 
 #ifdef CONFIG_RTW_WIFI_HAL_DEBUG
-	RTW_INFO("- tx_bytes : %llu rx_bytes : %llu total bytes : %llu\n", tx_bytes, rx_bytes, trx_total_bytes);
-	RTW_INFO("- netif_up = %s, on_time : %u ms\n", padapter->netif_up ? "1":"0", pwrpriv->on_time);
-	RTW_INFO("- pwr_saving_time : %u (%u) ms\n", pwrpriv->pwr_saving_time, ps_time);
-	RTW_INFO("- trx_total_time : %u ms\n", trx_total_time);		
-	RTW_INFO("- tx_time : %u ms\n", pwrpriv->tx_time);
-	RTW_INFO("- rx_time : %u ms\n", pwrpriv->rx_time);	
+		RTW_INFO("- tx_bytes : %llu rx_bytes : %llu total bytes : %llu\n", tx_bytes, rx_bytes, trx_total_bytes);
+		RTW_INFO("- netif_up=%s, on_time : %u ms\n", padapter->netif_up ? "1":"0", pwrpriv->on_time);
+		RTW_INFO("- pwr_saving_time : %u (%u) ms\n", pwrpriv->pwr_saving_time, ps_time);
+		RTW_INFO("- trx_total_time : %u ms\n", trx_total_time);		
+		RTW_INFO("- tx_time : %u ms\n", pwrpriv->tx_time);
+		RTW_INFO("- rx_time : %u ms\n", pwrpriv->rx_time);
 #endif /* CONFIG_RTW_WIFI_HAL_DEBUG */
 
 }
@@ -1235,16 +1223,16 @@ static int rtw_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	int err = 0;
 	_adapter *padapter = GET_PRIMARY_ADAPTER(wiphy_to_adapter(wiphy));
 	struct pwrctrl_priv *pwrpriv = adapter_to_pwrctl(padapter);
-	wifi_radio_stat_internal *radio;
+	wifi_radio_stat *radio;
 	wifi_iface_stat *iface;
 	char *output;
 
-	output = rtw_mallocx(sizeof(wifi_radio_stat_internal) + sizeof(wifi_iface_stat));
+	output = rtw_malloc(sizeof(wifi_radio_stat) + sizeof(wifi_iface_stat)+1);
 	if (output == NULL) {
 		RTW_DBG("Allocate lstats info buffer fail!\n");
-	}
+}
 
-	radio = (wifi_radio_stat_internal *)output;
+	radio = (wifi_radio_stat *)output;
 
 	radio->num_channels = 0;
 	radio->radio = 1;
@@ -1255,6 +1243,12 @@ static int rtw_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	radio->on_time = pwrpriv->on_time;
 	radio->tx_time = pwrpriv->tx_time;
 	radio->rx_time = pwrpriv->rx_time;
+	
+	radio->num_tx_levels = 1;
+	radio->tx_time_per_levels = NULL;
+	radio->tx_time_per_levels = (u32*)(output+sizeof(wifi_radio_stat) + sizeof(wifi_iface_stat));
+	*(radio->tx_time_per_levels) = DUMMY_TIME_STATICS;
+
 	radio->on_time_scan = 0;
 	radio->on_time_nbd = 0;
 	radio->on_time_gscan = 0;
@@ -1269,15 +1263,16 @@ static int rtw_cfgvendor_lstats_get_info(struct wiphy *wiphy,
 	RTW_INFO("radio->on_time :  %u ms\n", (radio->on_time));
 	RTW_INFO("radio->tx_time :  %u ms\n", (radio->tx_time));
 	RTW_INFO("radio->rx_time :  %u ms\n", (radio->rx_time));
+	RTW_INFO("radio->tx_time_per_levels value :  %u ms\n", *(radio->tx_time_per_levels));
 	#endif /* CONFIG_RTW_WIFI_HAL_DEBUG */
 	
 	RTW_DBG(FUNC_NDEV_FMT" %s\n", FUNC_NDEV_ARG(wdev_to_ndev(wdev)), (char*)data);
 	err =  rtw_cfgvendor_send_cmd_reply(wiphy, wdev_to_ndev(wdev), 
-		output, sizeof(wifi_iface_stat) + sizeof(wifi_radio_stat_internal));
+		output, sizeof(wifi_iface_stat) + sizeof(wifi_radio_stat)+1);
 	if (unlikely(err))
 		RTW_ERR(FUNC_NDEV_FMT"Vendor Command reply failed ret:%d \n"
 			, FUNC_NDEV_ARG(wdev_to_ndev(wdev)), err);
-	rtw_mfreex(output, sizeof(wifi_iface_stat) + sizeof(wifi_radio_stat_internal));
+	rtw_mfree(output, sizeof(wifi_iface_stat) + sizeof(wifi_radio_stat)+1);
 	return err;
 }
 static int rtw_cfgvendor_lstats_set_info(struct wiphy *wiphy,	
@@ -1295,450 +1290,6 @@ static int rtw_cfgvendor_lstats_clear_info(struct wiphy *wiphy,
 	return err;
 }
 #endif /* CONFIG_RTW_CFGVEDNOR_LLSTATS */
-#ifdef CONFIG_RTW_CFGVEDNOR_RSSIMONITOR
-static int rtw_cfgvendor_set_rssi_monitor(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void  *data, int len)
-{
-        _adapter *padapter = GET_PRIMARY_ADAPTER(wiphy_to_adapter(wiphy));
-        struct rtw_wdev_priv *pwdev_priv = adapter_wdev_data(padapter);
-
-        struct recv_priv *precvpriv = &padapter->recvpriv;
-	int err = 0, rem, type;
-        const struct nlattr *iter;
-
-        RTW_DBG(FUNC_NDEV_FMT" %s\n", FUNC_NDEV_ARG(wdev_to_ndev(wdev)), (char*)data);
-
-	nla_for_each_attr(iter, data, len, rem) {
-		type = nla_type(iter);
-
-		switch (type) {
-        		case RSSI_MONITOR_ATTRIBUTE_MAX_RSSI:
-                                pwdev_priv->rssi_monitor_max = (s8)nla_get_u32(iter);;
-	        		break;
-		        case RSSI_MONITOR_ATTRIBUTE_MIN_RSSI:
-                                pwdev_priv->rssi_monitor_min = (s8)nla_get_u32(iter);
-			        break;
-        		case RSSI_MONITOR_ATTRIBUTE_START:
-                                pwdev_priv->rssi_monitor_enable = (u8)nla_get_u32(iter);
-	        		break;
-		}
-	}
-
-	return err;
-}
-
-void rtw_cfgvendor_rssi_monitor_evt(_adapter *padapter) {
-	struct wireless_dev *wdev =  padapter->rtw_wdev;
-	struct wiphy *wiphy= wdev->wiphy;
-        struct recv_priv *precvpriv = &padapter->recvpriv;
-	struct	mlme_priv	*pmlmepriv = &(padapter->mlmepriv);
-	struct	wlan_network	*pcur_network = &pmlmepriv->cur_network;
-        struct rtw_wdev_priv *pwdev_priv = adapter_wdev_data(padapter);
-	struct sk_buff *skb;
-	u32 tot_len = NLMSG_DEFAULT_SIZE;
-	gfp_t kflags;
-        rssi_monitor_evt data ;
-        s8 rssi = precvpriv->rssi;
-
-        if (pwdev_priv->rssi_monitor_enable == 0 || check_fwstatex(pmlmepriv, _FW_LINKED) != _TRUE)
-                return;
-
-        if (rssi < pwdev_priv->rssi_monitor_max || rssi > pwdev_priv->rssi_monitor_min)
-                return;
-
-	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
-
-	/* Alloc the SKB for vendor_event */
-	skb = rtw_cfg80211_vendor_event_alloc(wiphy, wdev, tot_len, GOOGLE_RSSI_MONITOR_EVENT, kflags);
-	if (!skb) {
-		goto exit;
-	}
-
-        _rtw_memsetx(&data, 0, sizeof(data));
-
-        data.version = RSSI_MONITOR_EVT_VERSION;
-        data.cur_rssi = rssi;
-        _rtw_memcpyx(data.BSSID, pcur_network->network.MacAddress, sizeof(mac_addr));
-
-        nla_append(skb, sizeof(data), &data);
-
-	rtw_cfg80211_vendor_event(skb, kflags);
-exit:
-	return;
-}
-#endif /* CONFIG_RTW_CFGVEDNOR_RSSIMONITR */
-
-#ifdef CONFIG_RTW_CFGVENDOR_WIFI_LOGGER
-static int rtw_cfgvendor_logger_start_logging(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void  *data, int len)
-{
-	int ret = 0, rem, type;
-	char ring_name[32] = {0};
-	int log_level = 0, flags = 0, time_intval = 0, threshold = 0;
-	const struct nlattr *iter;
-
-	nla_for_each_attr(iter, data, len, rem) {
-		type = nla_type(iter);
-		switch (type) {
-			case LOGGER_ATTRIBUTE_RING_NAME:
-				strncpy(ring_name, nla_data(iter),
-					MIN(sizeof(ring_name) -1, nla_len(iter)));
-				break;
-			case LOGGER_ATTRIBUTE_LOG_LEVEL:
-				log_level = nla_get_u32(iter);
-				break;
-			case LOGGER_ATTRIBUTE_RING_FLAGS:
-				flags = nla_get_u32(iter);
-				break;
-			case LOGGER_ATTRIBUTE_LOG_TIME_INTVAL:
-				time_intval = nla_get_u32(iter);
-				break;
-			case LOGGER_ATTRIBUTE_LOG_MIN_DATA_SIZE:
-				threshold = nla_get_u32(iter);
-				break;
-			default:
-				RTW_ERR("Unknown type: %d\n", type);
-				ret = WIFI_ERROR_INVALID_ARGS;
-				goto exit;
-		}
-	}
-
-exit:
-	return ret;
-}
-static int rtw_cfgvendor_logger_get_feature(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void *data, int len)
-{
-	int err = 0;
-	u32 supported_features = 0;
-
-	err =  rtw_cfgvendor_send_cmd_reply(wiphy, wdev_to_ndev(wdev), &supported_features, sizeof(supported_features));
-
-	if (unlikely(err))
-		RTW_ERR(FUNC_NDEV_FMT" Vendor Command reply failed ret:%d\n"
-			, FUNC_NDEV_ARG(wdev_to_ndev(wdev)), err);
-
-	return err;
-}
-static int rtw_cfgvendor_logger_get_version(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void *data, int len)
-{
-	_adapter *padapter = GET_PRIMARY_ADAPTER(wiphy_to_adapter(wiphy));
-	HAL_DATA_TYPE *hal = GET_HAL_DATA(padapter);
-	int ret = 0, rem, type;
-	int buf_len = 1024;
-	char *buf_ptr;
-	const struct nlattr *iter;
-	gfp_t kflags;
-
-	kflags = in_atomic() ? GFP_ATOMIC : GFP_KERNEL;
-	buf_ptr = kzalloc(buf_len, kflags);
-	if (!buf_ptr) {
-		RTW_ERR("failed to allocate the buffer for version n");
-		ret = -ENOMEM;
-		goto exit;
-	}
-	nla_for_each_attr(iter, data, len, rem) {
-		type = nla_type(iter);
-		switch (type) {
-			case LOGGER_ATTRIBUTE_GET_DRIVER:
-				memcpy(buf_ptr, DRIVERVERSION, strlen(DRIVERVERSION)+1);
-				break;
-			case LOGGER_ATTRIBUTE_GET_FW:
-				sprintf(buf_ptr, "v%d.%d", hal->firmware_version, hal->firmware_sub_version);
-				break;
-			default:
-				RTW_ERR("Unknown type: %d\n", type);
-				ret = -EINVAL;
-				goto exit;
-		}
-	}
-	if (ret < 0) {
-		RTW_ERR("failed to get the version %d\n", ret);
-		goto exit;
-	}
-
-
-	ret =  rtw_cfgvendor_send_cmd_reply(wiphy, wdev_to_ndev(wdev), buf_ptr, strlen(buf_ptr));
-exit:
-	kfree(buf_ptr);
-	return ret;
-}
-
-static int rtw_cfgvendor_logger_get_ring_status(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void  *data, int len)
-{
-	int ret = 0;
-	int ring_id;
-	char ring_buf_name[] = "RTW_RING_BUFFER";
-
-	struct sk_buff *skb;
-	wifi_ring_buffer_status ring_status;
-
-
-	_rtw_memcpyx(ring_status.name, ring_buf_name, strlen(ring_buf_name)+1);
-	ring_status.ring_id = 1;
-	/* Alloc the SKB for vendor_event */
-	skb = cfg80211_vendor_cmd_alloc_reply_skb(wiphy,
-		sizeof(wifi_ring_buffer_status));
-	if (!skb) {
-		RTW_ERR("skb allocation is failed\n");
-		ret = FAIL;
-		goto exit;
-	}
-
-	nla_put_u32(skb, LOGGER_ATTRIBUTE_RING_NUM, 1);
-	nla_put(skb, LOGGER_ATTRIBUTE_RING_STATUS, sizeof(wifi_ring_buffer_status),
-				&ring_status);
-	ret = cfg80211_vendor_cmd_reply(skb);
-
-	if (ret) {
-		RTW_ERR("Vendor Command reply failed ret:%d \n", ret);
-	}
-exit:
-	return ret;
-}
-
-static int rtw_cfgvendor_logger_get_ring_data(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void  *data, int len)
-{
-	int ret = 0, rem, type;
-	char ring_name[32] = {0};
-	const struct nlattr *iter;
-
-	nla_for_each_attr(iter, data, len, rem) {
-		type = nla_type(iter);
-		switch (type) {
-			case LOGGER_ATTRIBUTE_RING_NAME:
-				strncpy(ring_name, nla_data(iter),
-					MIN(sizeof(ring_name) -1, nla_len(iter)));
-				RTW_INFO(" %s LOGGER_ATTRIBUTE_RING_NAME : %s\n", __func__, ring_name);
-				break;
-			default:
-				RTW_ERR("Unknown type: %d\n", type);
-				return ret;
-		}
-	}
-
-
-	return ret;
-}
-
-static int rtw_cfgvendor_logger_get_firmware_memory_dump(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void  *data, int len)
-{
-	int ret = WIFI_ERROR_NOT_SUPPORTED;
-
-	return ret;
-}
-
-static int rtw_cfgvendor_logger_start_pkt_fate_monitoring(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void  *data, int len)
-{
-	int ret = WIFI_SUCCESS;
-
-	return ret;
-}
-
-static int rtw_cfgvendor_logger_get_tx_pkt_fates(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void  *data, int len)
-{
-	int ret = WIFI_SUCCESS;
-
-	return ret;
-}
-
-static int rtw_cfgvendor_logger_get_rx_pkt_fates(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void  *data, int len)
-{
-	int ret = WIFI_SUCCESS;
-
-	return ret;
-}
-
-#endif /* CONFIG_RTW_CFGVENDOR_WIFI_LOGGER */
-#ifdef CONFIG_RTW_WIFI_HAL
-#ifdef CONFIG_RTW_CFGVENDOR_RANDOM_MAC_OUI
-
-#ifndef ETHER_ISMULTI
-#define ETHER_ISMULTI(ea) (((const u8 *)(ea))[0] & 1)
-#endif
-
-
-static u8 null_addrx[ETH_ALEN] = {0};
-static void rtw_hal_random_gen_mac_addr(u8 *mac_addr)
-{
-	do {
-		get_random_bytes(&mac_addr[3], ETH_ALEN-3);
-		if (memcmp(mac_addr, null_addrx, ETH_ALEN) != 0)
-			break;
-	} while(1);
-}
-
-void rtw_hal_pno_random_gen_mac_addr(PADAPTER adapter)
-{
-	u8 mac_addr[ETH_ALEN];
-	struct rtw_wdev_priv *pwdev_priv = adapter_wdev_data(adapter);
-
-	memcpy(mac_addr, pwdev_priv->pno_mac_addr, ETH_ALEN);
-	if (mac_addr[0] == 0xFF) return;
-	rtw_hal_random_gen_mac_addr(mac_addr);
-	memcpy(pwdev_priv->pno_mac_addr, mac_addr, ETH_ALEN);
-#ifdef CONFIG_RTW_DEBUG
-	print_hex_dump(KERN_DEBUG, "pno_mac_addr: ",
-		       DUMP_PREFIX_OFFSET, 16, 1, pwdev_priv->pno_mac_addr,
-		       ETH_ALEN, 1);
-#endif
-}
-
-void rtw_hal_set_hw_mac_addr(PADAPTER adapter, u8 *mac_addr)
-{
-	rtw_ps_denyx(adapter, PS_DENY_IOCTL);
-	LeaveAllPowerSaveModexDirect(adapter);
-
-	rtw_hal_set_hwregx(adapter, HW_VAR_MAC_ADDR, mac_addr);
-#ifdef CONFIG_RTW_DEBUG
-	rtw_hal_dump_macaddrx(RTW_DBGDUMP, adapter);
-#endif
-	rtw_ps_denyx_cancel(adapter, PS_DENY_IOCTL);
-}
-
-static int rtw_cfgvendor_set_rand_mac_oui(struct wiphy *wiphy,
-		struct wireless_dev *wdev, const void  *data, int len)
-{
-	int err = 0;
-	PADAPTER adapter;
-	void *devaddr;
-	struct net_device *netdev;
-	int type, mac_len;
-	u8 pno_random_mac_oui[3];
-	u8 mac_addr[ETH_ALEN] = {0};
-	struct pwrctrl_priv *pwrctl;
-	struct rtw_wdev_priv *pwdev_priv;
-
-	type = nla_type(data);
-	mac_len = nla_len(data);
-	if (mac_len != 3) {
-		RTW_ERR("%s oui len error %d != 3\n", __func__, mac_len);
-		return -1;
-	}
-
-	if (type == ANDR_WIFI_ATTRIBUTE_RANDOM_MAC_OUI) {
-		memcpy(pno_random_mac_oui, nla_data(data), 3);
-		print_hex_dump(KERN_DEBUG, "pno_random_mac_oui: ",
-			       DUMP_PREFIX_OFFSET, 16, 1, pno_random_mac_oui,
-			       3, 1);
-
-		if (ETHER_ISMULTI(pno_random_mac_oui)) {
-			pr_err("%s: oui is multicast address\n", __func__);
-			return -1;
-		}
-
-		adapter = wiphy_to_adapter(wiphy);
-		if (adapter == NULL) {
-			pr_err("%s: wiphy_to_adapter == NULL\n", __func__);
-			return -1;
-		}
-
-		pwdev_priv = adapter_wdev_data(adapter);
-
-		memcpy(mac_addr, pno_random_mac_oui, 3);
-		rtw_hal_random_gen_mac_addr(mac_addr);
-		memcpy(pwdev_priv->pno_mac_addr, mac_addr, ETH_ALEN);
-#ifdef CONFIG_RTW_DEBUG
-		print_hex_dump(KERN_DEBUG, "pno_mac_addr: ",
-			       DUMP_PREFIX_OFFSET, 16, 1, pwdev_priv->pno_mac_addr,
-			       ETH_ALEN, 1);
-#endif
-	} else {
-		RTW_ERR("%s oui type error %x != 0x2\n", __func__, type);
-		err = -1;
-	}
-
-
-	return err;
-}
-
-#endif
-
-
-static int rtw_cfgvendor_set_nodfs_flag(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void *data, int len)
-{
-	int err = 0;	
-	int type;
-	u32 nodfs = 0;
-	_adapter *padapter = GET_PRIMARY_ADAPTER(wiphy_to_adapter(wiphy));
-
-	RTW_DBG(FUNC_NDEV_FMT" %s\n", FUNC_NDEV_ARG(wdev_to_ndev(wdev)), (char*)data);
-
-	type = nla_type(data);
-	if (type == ANDR_WIFI_ATTRIBUTE_NODFS_SET) {
-		nodfs = nla_get_u32(data);
-		adapter_to_dvobj(padapter)->nodfs = nodfs;
-	} else {
-		err = -EINVAL;
-	}
-
-	RTW_INFO("%s nodfs=%d, err=%d\n", __func__, nodfs, err);
-	
-	return err;
-}
-
-static int rtw_cfgvendor_set_country(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void  *data, int len)
-{
-#define CNTRY_BUF_SZ	4	/* Country string is 3 bytes + NUL */
-	int err = 0, rem, type;
-	char country_code[CNTRY_BUF_SZ] = {0};
-	const struct nlattr *iter;
-	_adapter *padapter = GET_PRIMARY_ADAPTER(wiphy_to_adapter(wiphy));
-
-	RTW_DBG(FUNC_NDEV_FMT" %s\n", FUNC_NDEV_ARG(wdev_to_ndev(wdev)), (char*)data);
-
-	nla_for_each_attr(iter, data, len, rem) {
-		type = nla_type(iter);
-		switch (type) {
-			case ANDR_WIFI_ATTRIBUTE_COUNTRY:
-				_rtw_memcpyx(country_code, nla_data(iter),
-					MIN(nla_len(iter), CNTRY_BUF_SZ));
-				break;
-			default:
-				RTW_ERR("Unknown type: %d\n", type);
-				return -EINVAL;
-		}
-	}
-
-	RTW_INFO("%s country_code:\"%c%c\" \n", __func__, country_code[0], country_code[1]);
-
-	rtw_set_countryx(padapter, country_code);
-
-	return err;
-}
-
-static int rtw_cfgvendor_set_nd_offload(struct wiphy *wiphy,
-	struct wireless_dev *wdev, const void *data, int len)
-{
-	int err = 0;	
-	int type;
-	u8 nd_en = 0;
-	_adapter *padapter = GET_PRIMARY_ADAPTER(wiphy_to_adapter(wiphy));
-
-	RTW_DBG(FUNC_NDEV_FMT" %s\n", FUNC_NDEV_ARG(wdev_to_ndev(wdev)), (char*)data);
-
-	type = nla_type(data);
-	if (type == ANDR_WIFI_ATTRIBUTE_ND_OFFLOAD_VALUE) {
-		nd_en = nla_get_u8(data);
-		/* ND has been enabled when wow is enabled */
-	} else {
-		err = -EINVAL;
-	}
-
-	RTW_INFO("%s nd_en=%d, err=%d\n", __func__, nd_en, err);
-	
-	return err;
-}
-#endif /* CONFIG_RTW_WIFI_HAL */
 
 static const struct wiphy_vendor_command rtw_vendor_cmds[] = {
 #if defined(GSCAN_SUPPORT) && 0
@@ -1942,127 +1493,6 @@ static const struct wiphy_vendor_command rtw_vendor_cmds[] = {
 #endif
 	},
 #endif /* CONFIG_RTW_CFGVEDNOR_LLSTATS */
-#ifdef CONFIG_RTW_CFGVEDNOR_RSSIMONITOR
-        {
-                {
-                        .vendor_id = OUI_GOOGLE,
-                        .subcmd = WIFI_SUBCMD_SET_RSSI_MONITOR
-                },
-                .flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-                .doit = rtw_cfgvendor_set_rssi_monitor
-        },
-#endif /* CONFIG_RTW_CFGVEDNOR_RSSIMONITOR */
-#ifdef CONFIG_RTW_CFGVENDOR_WIFI_LOGGER
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = LOGGER_START_LOGGING
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_logger_start_logging
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = LOGGER_GET_FEATURE
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_logger_get_feature
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = LOGGER_GET_VER
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_logger_get_version
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = LOGGER_GET_RING_STATUS
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_logger_get_ring_status
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = LOGGER_GET_RING_DATA
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_logger_get_ring_data
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = LOGGER_TRIGGER_MEM_DUMP
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_logger_get_firmware_memory_dump
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = LOGGER_START_PKT_FATE_MONITORING
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_logger_start_pkt_fate_monitoring
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = LOGGER_GET_TX_PKT_FATES
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_logger_get_tx_pkt_fates
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = LOGGER_GET_RX_PKT_FATES
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_logger_get_rx_pkt_fates
-	},	
-#endif /* CONFIG_RTW_CFGVENDOR_WIFI_LOGGER */
-#ifdef CONFIG_RTW_WIFI_HAL
-#ifdef CONFIG_RTW_CFGVENDOR_RANDOM_MAC_OUI
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = WIFI_SUBCMD_SET_PNO_RANDOM_MAC_OUI
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_set_rand_mac_oui
-	},
-#endif
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = WIFI_SUBCMD_NODFS_SET
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_set_nodfs_flag
-
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = WIFI_SUBCMD_SET_COUNTRY_CODE
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_set_country
-	},
-	{
-		{
-			.vendor_id = OUI_GOOGLE,
-			.subcmd = WIFI_SUBCMD_CONFIG_ND_OFFLOAD
-		},
-		.flags = WIPHY_VENDOR_CMD_NEED_WDEV | WIPHY_VENDOR_CMD_NEED_NETDEV,
-		.doit = rtw_cfgvendor_set_nd_offload
-	},
-#endif /* CONFIG_RTW_WIFI_HAL */
 	{
 		{
 			.vendor_id = OUI_GOOGLE,
@@ -2101,11 +1531,6 @@ static const struct  nl80211_vendor_cmd_info rtw_vendor_events[] = {
 #if defined(RTT_SUPPORT) && 0
 	{ OUI_GOOGLE, RTT_EVENT_COMPLETE },
 #endif /* RTT_SUPPORT */
-
-#ifdef CONFIG_RTW_CFGVEDNOR_RSSIMONITOR
-	{ OUI_GOOGLE, GOOGLE_RSSI_MONITOR_EVENT },
-#endif /* RTW_CFGVEDNOR_RSSIMONITR */
-
 #if defined(GSCAN_SUPPORT) && 0
 	{ OUI_GOOGLE, GSCAN_EVENT_COMPLETE_SCAN },
 	{ OUI_GOOGLE, GSCAN_EVENT_HOTLIST_RESULTS_LOST }

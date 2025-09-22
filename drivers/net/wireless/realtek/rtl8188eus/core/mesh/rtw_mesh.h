@@ -19,6 +19,12 @@
 	#error "CONFIG_RTW_MESH can't be enabled when CONFIG_AP_MODE is not defined\n"
 #endif
 
+#ifndef RTW_MESH_SCAN_RESULT_EXP_MS
+#define RTW_MESH_SCAN_RESULT_EXP_MS (10 * 1000)
+#endif
+#ifndef RTW_MESH_OFFCH_CAND_FIND_INT_MS
+#define RTW_MESH_OFFCH_CAND_FIND_INT_MS (10 * 1000)
+#endif
 #define RTW_MESH_TTL				31
 #define RTW_MESH_PERR_MIN_INT			100
 #define RTW_MESH_DEFAULT_ELEMENT_TTL		31
@@ -106,7 +112,6 @@ extern const char *_rtw_mesh_ps_str[];
 #define RTW_PREQ_Q_F_REFRESH	0x2
 #define RTW_PREQ_Q_F_CHK	0x4
 #define RTW_PREQ_Q_F_PEER_AKA	0x8
-#define RTW_PREQ_Q_F_BCAST_PREQ	0x10 /* force path_dicover using broadcast */
 struct rtw_mesh_preq_queue {
 	_list list;
 	u8 dst[ETH_ALEN];
@@ -156,11 +161,11 @@ enum rtw_mesh_deferred_task_flags {
 #define RTW_MESH_PEER_CONF_DISABLED 0 /* special time value means no confirmation ongoing */
 #if CONFIG_RTW_MESH_PEER_BLACKLIST
 #define IS_PEER_CONF_DISABLED(plink) ((plink)->peer_conf_end_time == RTW_MESH_PEER_CONF_DISABLED)
-#define IS_PEER_CONF_TIMEOUT(plink)(!IS_PEER_CONF_DISABLED(plink) && rtw_time_afterx(rtw_get_current_timex(), (plink)->peer_conf_end_time))
+#define IS_PEER_CONF_TIMEOUT(plink)(!IS_PEER_CONF_DISABLED(plink) && rtw_time_after(rtw_get_current_time(), (plink)->peer_conf_end_time))
 #define SET_PEER_CONF_DISABLED(plink) (plink)->peer_conf_end_time = RTW_MESH_PEER_CONF_DISABLED
 #define SET_PEER_CONF_END_TIME(plink, timeout_ms) \
 	do { \
-		(plink)->peer_conf_end_time = rtw_get_current_timex() + rtw_ms_to_systimex(timeout_ms); \
+		(plink)->peer_conf_end_time = rtw_get_current_time() + rtw_ms_to_systime(timeout_ms); \
 		if ((plink)->peer_conf_end_time == RTW_MESH_PEER_CONF_DISABLED) \
 			(plink)->peer_conf_end_time++; \
 	} while (0)
@@ -174,11 +179,11 @@ enum rtw_mesh_deferred_task_flags {
 #define RTW_MESH_CTO_MGATE_CONF_DISABLED 0 /* special time value means no confirmation ongoing */
 #if CONFIG_RTW_MESH_CTO_MGATE_BLACKLIST
 #define IS_CTO_MGATE_CONF_DISABLED(plink) ((plink)->cto_mgate_conf_end_time == RTW_MESH_CTO_MGATE_CONF_DISABLED)
-#define IS_CTO_MGATE_CONF_TIMEOUT(plink)(!IS_CTO_MGATE_CONF_DISABLED(plink) && rtw_time_afterx(rtw_get_current_timex(), (plink)->cto_mgate_conf_end_time))
+#define IS_CTO_MGATE_CONF_TIMEOUT(plink)(!IS_CTO_MGATE_CONF_DISABLED(plink) && rtw_time_after(rtw_get_current_time(), (plink)->cto_mgate_conf_end_time))
 #define SET_CTO_MGATE_CONF_DISABLED(plink) (plink)->cto_mgate_conf_end_time = RTW_MESH_CTO_MGATE_CONF_DISABLED
 #define SET_CTO_MGATE_CONF_END_TIME(plink, timeout_ms) \
 	do { \
-		(plink)->cto_mgate_conf_end_time = rtw_get_current_timex() + rtw_ms_to_systimex(timeout_ms); \
+		(plink)->cto_mgate_conf_end_time = rtw_get_current_time() + rtw_ms_to_systime(timeout_ms); \
 		if ((plink)->cto_mgate_conf_end_time == RTW_MESH_CTO_MGATE_CONF_DISABLED) \
 			(plink)->cto_mgate_conf_end_time++; \
 	} while (0)
@@ -242,10 +247,6 @@ struct mesh_plink_pool {
 	u8 num; /* current ent being used */
 	struct mesh_plink_ent ent[RTW_MESH_MAX_PEER_CANDIDATES];
 
-#if CONFIG_RTW_MESH_ACNODE_PREVENT
-	u8 acnode_rsvd;
-#endif
-
 #if CONFIG_RTW_MESH_PEER_BLACKLIST
 	_queue peer_blacklist;
 #endif
@@ -254,18 +255,16 @@ struct mesh_plink_pool {
 #endif
 };
 
+#define RTW_MESH_PEER_CONF_TIMEOUT_MS (20 * 1000)
+#define RTW_MESH_PEER_BLACKLIST_TIMEOUT_MS (20 * 1000)
+#define RTW_MESH_CTO_MGATE_CONF_TIMEOUT_MS (20 * 1000)
+#define RTW_MESH_CTO_MGATE_BLACKLIST_TIMEOUT_MS (20 * 1000)
+
 struct mesh_peer_sel_policy {
 	u32 scanr_exp_ms;
 
-#if CONFIG_RTW_MESH_ACNODE_PREVENT
-	u8 acnode_prevent;
-	u32 acnode_conf_timeout_ms;
-	u32 acnode_notify_timeout_ms;
-#endif
-
 #if CONFIG_RTW_MESH_OFFCH_CAND
-	u8 offch_cand;
-	u32 offch_find_int_ms; /* 0 means no offch find triggerred by driver self*/
+	u32 offch_find_int_ms; /* 0 means no offch find by driver */
 #endif
 
 #if CONFIG_RTW_MESH_PEER_BLACKLIST
@@ -385,14 +384,12 @@ struct rtw_mesh_info {
 	int mpp_paths_generation;
 
 	int num_gates;
-	struct rtw_mesh_path *max_addr_gate;
-	bool max_addr_gate_is_larger_than_self;
 
 	struct rtw_mesh_stats mshstats;
 
 	_queue mpath_tx_queue;
 	u32 mpath_tx_queue_len;
-	_tasklet mpath_tx_tasklet;
+	struct tasklet_struct mpath_tx_tasklet;
 
 	struct rtw_mrc *mrc;
 
@@ -404,8 +401,8 @@ struct rtw_mesh_info {
 extern const char *_action_self_protected_str[];
 #define action_self_protected_str(action) ((action < RTW_ACT_SELF_PROTECTED_NUM) ? _action_self_protected_str[action] : _action_self_protected_str[0])
 
-u8 *rtw_set_iex_mesh_id(u8 *buf, u32 *buf_len, const char *mesh_id, u8 id_len);
-u8 *rtw_set_iex_mesh_config(u8 *buf, u32 *buf_len
+u8 *rtw_set_ie_mesh_id(u8 *buf, u32 *buf_len, const char *mesh_id, u8 id_len);
+u8 *rtw_set_ie_mesh_config(u8 *buf, u32 *buf_len
 	, u8 path_sel_proto, u8 path_sel_metric, u8 congest_ctl_mode, u8 sync_method, u8 auth_proto
 	, u8 num_of_peerings, bool cto_mgate, bool cto_as
 	, bool accept_peerings, bool mcca_sup, bool mcca_en, bool forwarding
@@ -418,22 +415,13 @@ void rtw_chk_candidate_peer_notify(_adapter *adapter, struct wlan_network *scann
 
 void rtw_mesh_peer_status_chk(_adapter *adapter);
 
-#if CONFIG_RTW_MESH_ACNODE_PREVENT
-void rtw_mesh_update_scanned_acnode_status(_adapter *adapter, struct wlan_network *scanned);
-bool rtw_mesh_scanned_is_acnode_confirmed(_adapter *adapter, struct wlan_network *scanned);
-bool rtw_mesh_acnode_prevent_allow_sacrifice(_adapter *adapter);
-struct sta_info *rtw_mesh_acnode_prevent_pick_sacrifice(_adapter *adapter);
-void dump_mesh_acnode_prevent_settings(void *sel, _adapter *adapter);
-#endif
-
 #if CONFIG_RTW_MESH_OFFCH_CAND
 u8 rtw_mesh_offch_candidate_accepted(_adapter *adapter);
 u8 rtw_mesh_select_operating_ch(_adapter *adapter);
-void dump_mesh_offch_cand_settings(void *sel, _adapter *adapter);
 #endif
 
 #if CONFIG_RTW_MESH_PEER_BLACKLIST
-int rtw_mesh_peer_blacklist_addx(_adapter *adapter, const u8 *addr);
+int rtw_mesh_peer_blacklist_add(_adapter *adapter, const u8 *addr);
 int rtw_mesh_peer_blacklist_del(_adapter *adapter, const u8 *addr);
 int rtw_mesh_peer_blacklist_search(_adapter *adapter, const u8 *addr);
 void rtw_mesh_peer_blacklist_flush(_adapter *adapter);
@@ -443,7 +431,7 @@ void dump_mesh_peer_blacklist_settings(void *sel, _adapter *adapter);
 #if CONFIG_RTW_MESH_CTO_MGATE_BLACKLIST
 u8 rtw_mesh_cto_mgate_required(_adapter *adapter);
 u8 rtw_mesh_cto_mgate_network_filter(_adapter *adapter, struct wlan_network *scanned);
-int rtw_mesh_cto_mgate_blacklist_addx(_adapter *adapter, const u8 *addr);
+int rtw_mesh_cto_mgate_blacklist_add(_adapter *adapter, const u8 *addr);
 int rtw_mesh_cto_mgate_blacklist_del(_adapter *adapter, const u8 *addr);
 int rtw_mesh_cto_mgate_blacklist_search(_adapter *adapter, const u8 *addr);
 void rtw_mesh_cto_mgate_blacklist_flush(_adapter *adapter);
@@ -453,13 +441,10 @@ void dump_mesh_cto_mgate_blacklist_settings(void *sel, _adapter *adapter);
 void dump_mesh_peer_sel_policy(void *sel, _adapter *adapter);
 void dump_mesh_networks(void *sel, _adapter *adapter);
 
-void rtw_mesh_adjust_chbw(u8 req_ch, u8 *req_bw, u8 *req_offset);
-
-void rtw_mesh_sae_check_frames(_adapter *adapter, const u8 *buf, u32 len, u8 tx, u16 alg, u16 seq, u16 status);
+int rtw_sae_check_frames(_adapter *adapter, const u8 *buf, u32 len, u8 tx);
 int rtw_mesh_check_frames_tx(_adapter *adapter, const u8 **buf, size_t *len);
 int rtw_mesh_check_frames_rx(_adapter *adapter, const u8 *buf, size_t len);
 
-int rtw_mesh_on_auth(_adapter *adapter, union recv_frame *rframe);
 unsigned int on_action_self_protected(_adapter *adapter, union recv_frame *rframe);
 
 bool rtw_mesh_update_bss_peering_status(_adapter *adapter, WLAN_BSSID_EX *bss);

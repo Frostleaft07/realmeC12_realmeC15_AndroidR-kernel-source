@@ -15,13 +15,13 @@
 #ifndef __USB_HAL_H__
 #define __USB_HAL_H__
 
-int usb_init_recv_privx(_adapter *padapter, u16 ini_in_buf_sz);
-void usb_free_recv_privx(_adapter *padapter, u16 ini_in_buf_sz);
+int usb_init_recv_priv(_adapter *padapter, u16 ini_in_buf_sz);
+void usb_free_recv_priv(_adapter *padapter, u16 ini_in_buf_sz);
 #ifdef CONFIG_FW_C2H_REG
 void usb_c2h_hisr_hdl(_adapter *adapter, u8 *buf);
 #endif
 
-u8 rtw_set_hal_opsx(_adapter *padapter);
+u8 rtw_set_hal_ops(_adapter *padapter);
 
 #ifdef CONFIG_RTL8188E
 void rtl8188eu_set_hal_ops(_adapter *padapter);
@@ -48,10 +48,6 @@ void rtl8814au_set_hal_ops(_adapter *padapter);
 void rtl8188fu_set_hal_ops(_adapter *padapter);
 #endif
 
-#ifdef CONFIG_RTL8188GTV
-void rtl8188gtvu_set_hal_ops(_adapter *padapter);
-#endif
-
 #ifdef CONFIG_RTL8703B
 void rtl8703bu_set_hal_ops(_adapter *padapter);
 #endif
@@ -60,12 +56,7 @@ void rtl8703bu_set_hal_ops(_adapter *padapter);
 void rtl8723du_set_hal_ops(_adapter *padapter);
 #endif
 
-#ifdef CONFIG_RTL8710B
-void rtl8710bu_set_hal_ops(_adapter *padapter);
-#endif
-
-#ifdef CONFIG_RTL8192F
-void rtl8192fu_set_hal_ops(_adapter *padapter);
-#endif /* CONFIG_RTL8192F */
-
+#ifdef CONFIG_INTEL_PROXIM
+extern _adapter  *rtw_usb_get_sw_pointer(void);
+#endif /* CONFIG_INTEL_PROXIM */
 #endif /* __USB_HAL_H__ */

@@ -83,7 +83,7 @@ void rtw_btcoex_ScanNotify(PADAPTER padapter, u8 type)
 
 	if (_FALSE == type) {
 		#ifdef CONFIG_CONCURRENT_MODE
-		if (rtw_mi_buddy_check_fwstatexx(padapter, WIFI_SITE_MONITOR))
+		if (rtw_mi_buddy_check_fwstate(padapter, WIFI_SITE_MONITOR))
 			return;
 		#endif
 
@@ -109,7 +109,7 @@ void rtw_btcoex_ConnectNotify(PADAPTER padapter, u8 action)
 		return;
 
 #ifdef DBG_CONFIG_ERROR_RESET
-	if (_TRUE == rtw_hal_sreset_inprogressxx(padapter)) {
+	if (_TRUE == rtw_hal_sreset_inprogress(padapter)) {
 		RTW_INFO(FUNC_ADPT_FMT ": [BTCoex] under reset, skip notify!\n",
 			 FUNC_ADPT_ARG(padapter));
 		return;
@@ -118,7 +118,7 @@ void rtw_btcoex_ConnectNotify(PADAPTER padapter, u8 action)
 
 #ifdef CONFIG_CONCURRENT_MODE
 	if (_FALSE == action) {
-		if (rtw_mi_buddy_check_fwstatexx(padapter, WIFI_UNDER_LINKING))
+		if (rtw_mi_buddy_check_fwstate(padapter, WIFI_UNDER_LINKING))
 			return;
 	}
 #endif
@@ -135,7 +135,7 @@ void rtw_btcoex_MediaStatusNotify(PADAPTER padapter, u8 mediaStatus)
 		return;
 
 #ifdef DBG_CONFIG_ERROR_RESET
-	if (_TRUE == rtw_hal_sreset_inprogressxx(padapter)) {
+	if (_TRUE == rtw_hal_sreset_inprogress(padapter)) {
 		RTW_INFO(FUNC_ADPT_FMT ": [BTCoex] under reset, skip notify!\n",
 			 FUNC_ADPT_ARG(padapter));
 		return;
@@ -144,14 +144,14 @@ void rtw_btcoex_MediaStatusNotify(PADAPTER padapter, u8 mediaStatus)
 
 #ifdef CONFIG_CONCURRENT_MODE
 	if (RT_MEDIA_DISCONNECT == mediaStatus) {
-		if (rtw_mi_buddy_check_fwstatexx(padapter, WIFI_ASOC_STATE))
+		if (rtw_mi_buddy_check_fwstate(padapter, WIFI_ASOC_STATE))
 			return;
 	}
 #endif /* CONFIG_CONCURRENT_MODE */
 
 	if ((RT_MEDIA_CONNECT == mediaStatus)
-	    && (check_fwstatex(&padapter->mlmepriv, WIFI_AP_STATE) == _TRUE))
-		rtw_hal_set_hwregx(padapter, HW_VAR_DL_RSVD_PAGE, NULL);
+	    && (check_fwstate(&padapter->mlmepriv, WIFI_AP_STATE) == _TRUE))
+		rtw_hal_set_hwreg(padapter, HW_VAR_DL_RSVD_PAGE, NULL);
 
 	hal_btcoex_MediaStatusNotify(padapter, mediaStatus);
 }
@@ -345,21 +345,6 @@ u32 rtw_btcoex_GetRaMask(PADAPTER padapter)
 	return hal_btcoex_GetRaMask(padapter);
 }
 
-u8 rtw_btcoex_query_reduced_wl_pwr_lvl(PADAPTER padapter)
-{
-	return hal_btcoex_query_reduced_wl_pwr_lvl(padapter);
-}
-
-void rtw_btcoex_set_reduced_wl_pwr_lvl(PADAPTER padapter, u8 val)
-{
-	hal_btcoex_set_reduced_wl_pwr_lvl(padapter, val);
-}
-
-void rtw_btcoex_do_reduce_wl_pwr_lvl(PADAPTER padapter)
-{
-	hal_btcoex_do_reduce_wl_pwr_lvl(padapter);
-}
-
 void rtw_btcoex_RecordPwrMode(PADAPTER padapter, u8 *pCmdBuf, u8 cmdLen)
 {
 	hal_btcoex_RecordPwrMode(padapter, pCmdBuf, cmdLen);
@@ -427,7 +412,7 @@ u8 rtw_btcoex_GetRf4ceLinkState(PADAPTER padapter)
  * ================================================== */
 void rtw_btcoex_rx_ampdu_apply(PADAPTER padapter)
 {
-	rtw_rx_ampdu_applyx(padapter);
+	rtw_rx_ampdu_apply(padapter);
 }
 
 void rtw_btcoex_LPS_Enter(PADAPTER padapter)
@@ -452,6 +437,7 @@ u8 rtw_btcoex_LPS_Leave(PADAPTER padapter)
 
 	if (pwrpriv->pwr_mode != PS_MODE_ACTIVE) {
 		rtw_set_ps_mode(padapter, PS_MODE_ACTIVE, 0, 0, "BTCOEX");
+		LPS_RF_ON_check(padapter, 100);
 		pwrpriv->bpower_saving = _FALSE;
 	}
 
@@ -466,16 +452,6 @@ u16 rtw_btcoex_btreg_read(PADAPTER padapter, u8 type, u16 addr, u32 *data)
 u16 rtw_btcoex_btreg_write(PADAPTER padapter, u8 type, u16 addr, u16 val)
 {
 	return hal_btcoex_btreg_write(padapter, type, addr, val);
-}
-
-u16 rtw_btcoex_btset_testmode(PADAPTER padapter, u8 type)
-{
-	return hal_btcoex_btset_testode(padapter, type);
-}
-
-u8 rtw_btcoex_get_reduce_wl_txpwr(PADAPTER padapter)
-{
-	return rtw_btcoex_query_reduced_wl_pwr_lvl(padapter);
 }
 
 u8 rtw_btcoex_get_bt_coexist(PADAPTER padapter)
@@ -549,23 +525,23 @@ u8 rtw_btcoex_btinfo_cmd(_adapter *adapter, u8 *buf, u16 len)
 	struct cmd_priv *pcmdpriv = &adapter->cmdpriv;
 	u8	res = _SUCCESS;
 
-	ph2c = (struct cmd_obj *)rtw_zmallocx(sizeof(struct cmd_obj));
+	ph2c = (struct cmd_obj *)rtw_zmalloc(sizeof(struct cmd_obj));
 	if (ph2c == NULL) {
 		res = _FAIL;
 		goto exit;
 	}
 
-	pdrvextra_cmd_parm = (struct drvextra_cmd_parm *)rtw_zmallocx(sizeof(struct drvextra_cmd_parm));
+	pdrvextra_cmd_parm = (struct drvextra_cmd_parm *)rtw_zmalloc(sizeof(struct drvextra_cmd_parm));
 	if (pdrvextra_cmd_parm == NULL) {
-		rtw_mfreex((u8 *)ph2c, sizeof(struct cmd_obj));
+		rtw_mfree((u8 *)ph2c, sizeof(struct cmd_obj));
 		res = _FAIL;
 		goto exit;
 	}
 
-	btinfo = rtw_zmallocx(len);
+	btinfo = rtw_zmalloc(len);
 	if (btinfo == NULL) {
-		rtw_mfreex((u8 *)ph2c, sizeof(struct cmd_obj));
-		rtw_mfreex((u8 *)pdrvextra_cmd_parm, sizeof(struct drvextra_cmd_parm));
+		rtw_mfree((u8 *)ph2c, sizeof(struct cmd_obj));
+		rtw_mfree((u8 *)pdrvextra_cmd_parm, sizeof(struct drvextra_cmd_parm));
 		res = _FAIL;
 		goto exit;
 	}
@@ -575,11 +551,11 @@ u8 rtw_btcoex_btinfo_cmd(_adapter *adapter, u8 *buf, u16 len)
 	pdrvextra_cmd_parm->size = len;
 	pdrvextra_cmd_parm->pbuf = btinfo;
 
-	_rtw_memcpyx(btinfo, buf, len);
+	_rtw_memcpy(btinfo, buf, len);
 
 	init_h2fwcmd_w_parm_no_rsp(ph2c, pdrvextra_cmd_parm, GEN_CMD_CODE(_Set_Drv_Extra));
 
-	res = rtw_enqueue_cmdx(pcmdpriv, ph2c);
+	res = rtw_enqueue_cmd(pcmdpriv, ph2c);
 
 exit:
 	return res;
@@ -649,7 +625,7 @@ u8 rtw_btcoex_parse_BT_info_notify_cmd(_adapter *padapter, u8 *pcmd, u16 cmdlen)
 	RTW_INFO("%02x:%02x:%02x:%02x:%02x:%02x:%02x:%02x\n"
 		,pcmd[4],pcmd[5],pcmd[6],pcmd[7],pcmd[8],pcmd[9],pcmd[10],pcmd[11]);*/
 
-	_rtw_memsetx(btinfo, 0, BT_INFO_LENGTH);
+	_rtw_memset(btinfo, 0, BT_INFO_LENGTH);
 
 #if 1
 	if (BT_INFO_LENGTH != btInfoLen) {
@@ -660,7 +636,7 @@ u8 rtw_btcoex_parse_BT_info_notify_cmd(_adapter *padapter, u8 *pcmd, u16 cmdlen)
 #endif
 	{
 		if (0x1 == btInfoReason || 0x2 == btInfoReason) {
-			_rtw_memcpyx(btinfo, &pcmd[4], btInfoLen);
+			_rtw_memcpy(btinfo, &pcmd[4], btInfoLen);
 			btinfo[0] = btInfoReason;
 			rtw_btcoex_btinfo_cmd(padapter, btinfo, btInfoLen);
 		} else
@@ -890,7 +866,7 @@ u8 rtw_btcoex_parse_HCI_link_status_notify_cmd(_adapter *padapter, u8 *pcmd, u16
 			RTW_INFO("Connection_Handle=0x%x, BTProfile=%d, BTSpec=%d\n", conHandle, btProfile, btCoreSpec);
 			pTriple += 4;
 		} else if (pBtMgnt->ExtConfig.HCIExtensionVer >= 1) {
-			conHandle = *((u16 *)&pTriple[0]);
+			conHandle = *((pu2Byte)&pTriple[0]);
 			btProfile = pTriple[2];
 			btCoreSpec = pTriple[3];
 			linkRole = pTriple[4];
@@ -1284,21 +1260,21 @@ u16 rtw_btcoex_parse_recv_data(u8 *msg, u8 msg_size)
 	u8 cmp_msg6[32] = invite_rsp;
 	u8 res = OTHER;
 
-	if (_rtw_memcmpx(cmp_msg1, msg, msg_size) == _TRUE) {
+	if (_rtw_memcmp(cmp_msg1, msg, msg_size) == _TRUE) {
 		/*RTW_INFO("%s, msg:%s\n",__func__,msg);*/
 		res = RX_ATTEND_ACK;
-	} else if (_rtw_memcmpx(cmp_msg2, msg, msg_size) == _TRUE) {
+	} else if (_rtw_memcmp(cmp_msg2, msg, msg_size) == _TRUE) {
 		/*RTW_INFO("%s, msg:%s\n",__func__,msg);*/
 		res = RX_LEAVE_ACK;
-	} else if (_rtw_memcmpx(cmp_msg3, msg, msg_size) == _TRUE) {
+	} else if (_rtw_memcmp(cmp_msg3, msg, msg_size) == _TRUE) {
 		/*RTW_INFO("%s, msg:%s\n",__func__,msg);*/
 		res = RX_BT_LEAVE;
-	} else if (_rtw_memcmpx(cmp_msg4, msg, msg_size) == _TRUE) {
+	} else if (_rtw_memcmp(cmp_msg4, msg, msg_size) == _TRUE) {
 		/*RTW_INFO("%s, msg:%s\n",__func__,msg);*/
 		res = RX_INVITE_REQ;
-	} else if (_rtw_memcmpx(cmp_msg5, msg, msg_size) == _TRUE)
+	} else if (_rtw_memcmp(cmp_msg5, msg, msg_size) == _TRUE)
 		res = RX_ATTEND_REQ;
-	else if (_rtw_memcmpx(cmp_msg6, msg, msg_size) == _TRUE)
+	else if (_rtw_memcmp(cmp_msg6, msg, msg_size) == _TRUE)
 		res = RX_INVITE_RSP;
 	else {
 		/*RTW_INFO("%s, %s\n", __func__, msg);*/
@@ -1347,8 +1323,8 @@ void rtw_btcoex_recvmsgbysocket(void *data)
 
 		/*important: cut the udp header from skb->data! header length is 8 byte*/
 		recv_length = skb->len - 8;
-		_rtw_memsetx(recv_data, 0, sizeof(recv_data));
-		_rtw_memcpyx(recv_data, skb->data + 8, recv_length);
+		_rtw_memset(recv_data, 0, sizeof(recv_data));
+		_rtw_memcpy(recv_data, skb->data + 8, recv_length);
 
 		parse_res = rtw_btcoex_parse_recv_data(recv_data, recv_length);
 #if 0
@@ -1535,12 +1511,12 @@ u8 rtw_btcoex_create_kernel_socket(_adapter *padapter)
 		RTW_INFO("Error during creation of socket error:%d\n", kernel_socket_err);
 		status = _FAIL;
 	} else {
-		_rtw_memsetx(&(pcoex_info->wifi_sockaddr), 0, sizeof(pcoex_info->wifi_sockaddr));
+		_rtw_memset(&(pcoex_info->wifi_sockaddr), 0, sizeof(pcoex_info->wifi_sockaddr));
 		pcoex_info->wifi_sockaddr.sin_family = AF_INET;
 		pcoex_info->wifi_sockaddr.sin_port = htons(CONNECT_PORT);
 		pcoex_info->wifi_sockaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
 
-		_rtw_memsetx(&(pcoex_info->bt_sockaddr), 0, sizeof(pcoex_info->bt_sockaddr));
+		_rtw_memset(&(pcoex_info->bt_sockaddr), 0, sizeof(pcoex_info->bt_sockaddr));
 		pcoex_info->bt_sockaddr.sin_family = AF_INET;
 		pcoex_info->bt_sockaddr.sin_port = htons(CONNECT_PORT_BT);
 		pcoex_info->bt_sockaddr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
@@ -1589,7 +1565,7 @@ void rtw_btcoex_init_socket(_adapter *padapter)
 	struct bt_coex_info *pcoex_info = &padapter->coex_info;
 	RTW_INFO("%s\n", __func__);
 	if (_FALSE == pcoex_info->is_exist) {
-		_rtw_memsetx(pcoex_info, 0, sizeof(struct bt_coex_info));
+		_rtw_memset(pcoex_info, 0, sizeof(struct bt_coex_info));
 		pcoex_info->btcoex_wq = create_workqueue("BTCOEX");
 		INIT_DELAYED_WORK(&pcoex_info->recvmsg_work,
 				  (void *)rtw_btcoex_recvmsgbysocket);
@@ -1651,7 +1627,7 @@ void rtw_btcoex_SendEventExtBtCoexControl(PADAPTER padapter, u8 bNeedDbgRsp, u8 
 	u8 			localBuf[32] = "";
 	u8			*pRetPar;
 	u8			opCode = 0;
-	u8			*pInBuf = (u8 *)pData;
+	u8			*pInBuf = (pu1Byte)pData;
 	u8			*pOpCodeContent;
 	rtw_HCI_event *pEvent;
 
@@ -1669,7 +1645,7 @@ void rtw_btcoex_SendEventExtBtCoexControl(PADAPTER padapter, u8 bNeedDbgRsp, u8 
 
 	/* Return parameters starts from here */
 	pRetPar = &pEvent->Data[len];
-	_rtw_memcpyx(&pRetPar[0], pData, dataLen);
+	_rtw_memcpy(&pRetPar[0], pData, dataLen);
 
 	len += dataLen;
 
@@ -1711,7 +1687,7 @@ void rtw_btcoex_SendEventExtBtInfoControl(PADAPTER padapter, u8 dataLen, void *p
 
 	/* Return parameters starts from here */
 	pRetPar = &pEvent->Data[len];
-	_rtw_memcpyx(&pRetPar[0], pData, dataLen);
+	_rtw_memcpy(&pRetPar[0], pData, dataLen);
 
 	len += dataLen;
 
@@ -1767,7 +1743,7 @@ void rtw_btcoex_SendScanNotify(PADAPTER padapter, u8 scanType)
 #endif /* CONFIG_BT_COEXIST_SOCKET_TRX */
 #endif /* CONFIG_BT_COEXIST */
 
-void rtw_btcoex_set_ant_infox(PADAPTER padapter)
+void rtw_btcoex_set_ant_info(PADAPTER padapter)
 {
 #ifdef CONFIG_BT_COEXIST
 	PHAL_DATA_TYPE hal = GET_HAL_DATA(padapter);
@@ -1776,12 +1752,12 @@ void rtw_btcoex_set_ant_infox(PADAPTER padapter)
 		u8 bMacPwrCtrlOn = _FALSE;
 
 		rtw_btcoex_AntInfoSetting(padapter);
-		rtw_hal_get_hwregx(padapter, HW_VAR_APFM_ON_MAC, &bMacPwrCtrlOn);
+		rtw_hal_get_hwreg(padapter, HW_VAR_APFM_ON_MAC, &bMacPwrCtrlOn);
 		if (bMacPwrCtrlOn == _TRUE)
 			rtw_btcoex_PowerOnSetting(padapter);
 	}
 	else
 #endif
-		rtw_btcoex_wifionly_AntInfoSettingx(padapter);
+		rtw_btcoex_wifionly_AntInfoSetting(padapter);
 }
 

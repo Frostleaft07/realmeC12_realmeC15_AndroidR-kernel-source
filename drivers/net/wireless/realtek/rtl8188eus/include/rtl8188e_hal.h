@@ -128,17 +128,16 @@ typedef struct _RT_8188E_FIRMWARE_HDR {
 
 #define MAX_TX_REPORT_BUFFER_SIZE			0x0400 /* 1k */
 
-#define PAGE_SIZE_TX_88E PAGE_SIZE_128
 /* Note: We will divide number of page equally for each queue other than public queue!
  * 22k = 22528 bytes = 176 pages (@page =  128 bytes)
- * BCN rsvd_page_num = MAX_BEACON_LEN / PAGE_SIZE_TX_88E
- * 1 ps-poll / 1 null-data /1 prob_rsp /1 QOS null-data = 4 pages */
+ * At leat 4 BCN pages for GO
+ * 4 BCN + 1 ps-poll + 1 null-data + 1 prob_rsp + 1 QOS null-data = 8 pages */
 
-#define BCNQ_PAGE_NUM_88E		(MAX_BEACON_LEN / PAGE_SIZE_TX_88E + 4) /*0x09*/
+#define BCNQ_PAGE_NUM_88E		0x08
 
 /* For WoWLan , more reserved page */
 #ifdef CONFIG_WOWLAN
-	/* 1 ArpRsp + 2 NbrAdv + 2 NDPInfo + 1 RCI + 1 AOAC = 7 pages */
+	/* 1 ArpRsp + 2 NbrAdv + 2 NDPInfo + 1 RCI + 1 AOAC = 7 pages*/
 	#define WOWLAN_PAGE_NUM_88E	0x07
 #else
 	#define WOWLAN_PAGE_NUM_88E	0x00
@@ -232,7 +231,7 @@ Total page numbers : 176(0xB0) / 256(0x100)
 /* #define RT_IS_FUNC_DISABLED(__pAdapter, __FuncBits) ( (__pAdapter)->DisabledFunctions & (__FuncBits) ) */
 
 #ifdef CONFIG_PCI_HCI
-	/* according to the define in the rtw_xmitx.h, rtw_recv.h */
+	/* according to the define in the rtw_xmit.h, rtw_recv.h */
 	#define TX_DESC_NUM_8188EE  TXDESC_NUM   /* 128 */
 	#ifdef CONFIG_CONCURRENT_MODE
 		/*#define BE_QUEUE_TX_DESC_NUM_8188EE  (TXDESC_NUM<<1)*/		/* 256 */
@@ -285,12 +284,16 @@ BOOLEAN HalDetectPwrDownMode88E(PADAPTER Adapter);
 	void Hal_ReadRFGainOffset(PADAPTER pAdapter, u8 *hwinfo, BOOLEAN AutoLoadFail);
 #endif /*CONFIG_RF_POWER_TRIM*/
 
+void rtl8188e_init_default_value(_adapter *adapter);
 
 void InitBeaconParameters_8188e(_adapter *adapter);
 void SetBeaconRelatedRegisters8188E(PADAPTER padapter);
 
 void rtl8188e_set_hal_ops(struct hal_ops *pHalFunc);
 void init_hal_spec_8188e(_adapter *adapter);
+
+/* register */
+void SetBcnCtrlReg(PADAPTER padapter, u8 SetBits, u8 ClearBits);
 
 void rtl8188e_start_thread(_adapter *padapter);
 void rtl8188e_stop_thread(_adapter *padapter);
@@ -301,14 +304,14 @@ void rtw_IOL_cmd_tx_pkt_buf_dump(ADAPTER *Adapter, int data_len);
 #endif/* CONFIG_IOL_EFUSE_PATCH */
 void _InitTransferPageSize(PADAPTER padapter);
 
-u8 SetHwRegx8188E(PADAPTER padapter, u8 variable, u8 *val);
-void GetHwRegx8188E(PADAPTER padapter, u8 variable, u8 *val);
+u8 SetHwReg8188E(PADAPTER padapter, u8 variable, u8 *val);
+void GetHwReg8188E(PADAPTER padapter, u8 variable, u8 *val);
 
 u8
-GetHalDefVarx8188E(
-		PADAPTER				Adapter,
-		HAL_DEF_VARIABLE		eVariable,
-		void						*pValue
+GetHalDefVar8188E(
+	IN	PADAPTER				Adapter,
+	IN	HAL_DEF_VARIABLE		eVariable,
+	IN	PVOID					pValue
 );
 #ifdef CONFIG_GPIO_API
 int rtl8188e_GpioFuncCheck(PADAPTER adapter, u8 gpio_num);
