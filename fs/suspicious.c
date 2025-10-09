@@ -23,7 +23,8 @@ static const char* const suspicious_paths[] = {
 	"/vendor/bin/install-recovery.sh",
 	"/system/bin/install-recovery.sh",
 	"/system/bin/busybox",
-	"/debug_ramdisk"
+	"/debug_ramdisk",
+	"/system/bin/magic-flash"
 };
 
 static const char* const suspicious_mount_types[] = {
@@ -36,7 +37,7 @@ static const char* const suspicious_mount_paths[] = {
 	"/apex/com.android.art/bin/dex2oat",
 	"/system/apex/com.android.art/bin/dex2oat",
 	"/system/etc/preloaded-classes",
-	"/dev/zygisk",
+	"/dev/zygisk"
 };
 
 static const char* const suspicious_mount_devices[] = {
