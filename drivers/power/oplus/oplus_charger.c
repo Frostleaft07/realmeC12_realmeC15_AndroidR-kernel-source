@@ -84,7 +84,7 @@ static struct oplus_chg_chip *g_charger_chip = NULL;
 #define OPLUS_CHG_UPDATE_INTERVAL	round_jiffies_relative(msecs_to_jiffies(OPLUS_CHG_UPDATE_INTERVAL_SEC*1000))
 
 
-#define OPLUS_CHG_DEFAULT_CHARGING_CURRENT	512
+#define OPLUS_CHG_DEFAULT_CHARGING_CURRENT	1500
 
 int enable_charger_log = 2;
 int charger_abnormal_log = 0;
@@ -799,6 +799,8 @@ if (chip == NULL) {
 			} else {
 				chip->icharging = oplus_gauge_get_batt_current();
 			}
+			if (chip->bypass_chg)
+				chip->icharging = 0;
 			val->intval = chip->icharging;
 			break;
 		case POWER_SUPPLY_PROP_TEMP:
@@ -2013,6 +2015,8 @@ static void oplus_chg_show_ui_soc_decimal(struct work_struct *work)
 		chip->batt_fcc =  oplus_gauge_get_batt_fcc() * chip->vbatt_num;
 		chip->icharging = oplus_gauge_get_batt_current();
 	}
+	if (chip->bypass_chg)
+		chip->icharging = 0;
 	icharging = chip->icharging * (-1);
 
 	/*calculate the speed*/
@@ -3671,6 +3675,15 @@ int oplus_chg_get_tbatt_normal_charging_current(struct oplus_chg_chip *chip)
 static void oplus_chg_set_charging_current(struct oplus_chg_chip *chip)
 {
 	int charging_current = OPLUS_CHG_DEFAULT_CHARGING_CURRENT;
+
+	if (chip->bypass_chg) {
+		/* Bypass charging: power system directly, do not charge battery */
+		chip->charging_state = CHARGING_STATUS_FAIL;
+		chip->prop_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+		if (chip->chg_ops && chip->chg_ops->charging_current_write_fast)
+			chip->chg_ops->charging_current_write_fast(0);
+		return;
+	}
 #ifndef CONFIG_OPLUS_CHARGER_MTK
 #ifndef WPC_NEW_INTERFACE
 		if (chip->wireless_support && oplus_wireless_charge_start() == true) {
@@ -3766,6 +3779,9 @@ static void oplus_chg_set_charging_current(struct oplus_chg_chip *chip)
 		}
 		charger_xlog_printk(CHG_LOG_CRTI,
 				"[BATTERY]LED ON, charging current: %d\n", charging_current);
+	}
+	if (charging_current != 0 && charging_current < 1500) {
+		charging_current = 1500;
 	}
 	if (charging_current == 0) {
 		return;
@@ -3896,6 +3912,8 @@ void oplus_chg_set_input_current_limit(struct oplus_chg_chip *chip)
 		chip->cool_down,
 		chip->cool_down_force_5v);
 
+	if (current_limit < 1500)
+		current_limit = 1500;
 	chip->chg_ops->input_current_write(current_limit);
 }
 
@@ -4231,6 +4249,9 @@ void oplus_chg_turn_on_ffc2(struct oplus_chg_chip *chip)
 
 void oplus_chg_turn_on_charging(struct oplus_chg_chip *chip)
 {
+	if (chip->bypass_chg) {
+		return;
+	}
 	if (!chip->authenticate) {
 		return;
 	}
@@ -5757,6 +5778,8 @@ static void oplus_chg_get_battery_data(struct oplus_chg_chip *chip)
 		chip->batt_volt_max = oplus_gauge_get_prev_batt_mvolts_2cell_max();
 		chip->batt_volt_min = oplus_gauge_get_prev_batt_mvolts_2cell_min();
 		chip->icharging = oplus_gauge_get_prev_batt_current();
+		if (chip->bypass_chg)
+			chip->icharging = 0;
 		chip->temperature = oplus_chg_match_temp_for_chging();
 		chip->soc = oplus_gauge_get_prev_batt_soc();
 		chip->batt_rm = oplus_gauge_get_prev_remaining_capacity() * chip->vbatt_num;
@@ -5781,6 +5804,8 @@ static void oplus_chg_get_battery_data(struct oplus_chg_chip *chip)
 		chip->batt_volt_max = oplus_gauge_get_batt_mvolts_2cell_max();
 		chip->batt_volt_min = oplus_gauge_get_batt_mvolts_2cell_min();
 		chip->icharging = oplus_gauge_get_batt_current();
+		if (chip->bypass_chg)
+			chip->icharging = 0;
 		chip->temperature = oplus_chg_match_temp_for_chging();
 		chip->soc = oplus_gauge_get_batt_soc();
 		chip->batt_fcc = oplus_gauge_get_batt_fcc() * chip->vbatt_num;
