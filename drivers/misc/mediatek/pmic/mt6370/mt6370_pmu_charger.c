@@ -2730,13 +2730,13 @@ static int mt6370_run_aicl(struct charger_device *chg_dev, u32 *uA)
 
 static int mt6370_get_min_ichg(struct charger_device *chg_dev, u32 *uA)
 {
-	*uA = 500000;
+	*uA = 1500000;
 	return 0;
 }
 
 static int mt6370_get_min_aicr(struct charger_device *chg_dev, u32 *uA)
 {
-	*uA = 100000;
+	*uA = 1500000;
 	return 0;
 }
 

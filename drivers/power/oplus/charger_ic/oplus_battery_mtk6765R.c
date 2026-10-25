@@ -4211,6 +4211,60 @@ static ssize_t store_StartCharging_Test(struct device *dev,struct device_attribu
 }
 static DEVICE_ATTR(StartCharging_Test, 0664, show_StartCharging_Test, store_StartCharging_Test);
 
+static ssize_t show_bypass_charging(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	if (!g_oplus_chip)
+		return sprintf(buf, "0\n");
+	return sprintf(buf, "%d\n", g_oplus_chip->bypass_chg);
+}
+
+static ssize_t store_bypass_charging(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned int val = 0;
+	if (!g_oplus_chip)
+		return size;
+	if (kstrtouint(buf, 10, &val) == 0) {
+		g_oplus_chip->bypass_chg = !!val;
+		if (g_oplus_chip->bypass_chg) {
+			g_oplus_chip->charging_state = CHARGING_STATUS_FAIL;
+			g_oplus_chip->prop_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+			oplus_chg_turn_off_charging(g_oplus_chip);
+		} else {
+			g_oplus_chip->charging_state = CHARGING_STATUS_CCCV;
+			oplus_chg_turn_on_charging(g_oplus_chip);
+		}
+	}
+	return size;
+}
+static DEVICE_ATTR(bypass_charging, 0664, show_bypass_charging, store_bypass_charging);
+
+static ssize_t show_charging_enabled(struct device *dev, struct device_attribute *attr, char *buf)
+{
+	if (!g_oplus_chip)
+		return sprintf(buf, "1\n");
+	return sprintf(buf, "%d\n", g_oplus_chip->bypass_chg ? 0 : 1);
+}
+
+static ssize_t store_charging_enabled(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+{
+	unsigned int val = 0;
+	if (!g_oplus_chip)
+		return size;
+	if (kstrtouint(buf, 10, &val) == 0) {
+		g_oplus_chip->bypass_chg = !val;
+		if (g_oplus_chip->bypass_chg) {
+			g_oplus_chip->charging_state = CHARGING_STATUS_FAIL;
+			g_oplus_chip->prop_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+			oplus_chg_turn_off_charging(g_oplus_chip);
+		} else {
+			g_oplus_chip->charging_state = CHARGING_STATUS_CCCV;
+			oplus_chg_turn_on_charging(g_oplus_chip);
+		}
+	}
+	return size;
+}
+static DEVICE_ATTR(charging_enabled, 0664, show_charging_enabled, store_charging_enabled);
+
 void oplus_chg_default_method0(void)
 {
 	pr_err("charger ic default %d\n", charger_ic__det_flag);
@@ -4520,6 +4574,8 @@ static int oplus_charger_probe(struct platform_device *pdev)
 	if (IS_ERR(oplus_chip->batt_psy) == 0) {
 		ret = device_create_file(&oplus_chip->batt_psy->dev, &dev_attr_StopCharging_Test);//stop charging
 		ret = device_create_file(&oplus_chip->batt_psy->dev, &dev_attr_StartCharging_Test);
+		ret = device_create_file(&oplus_chip->batt_psy->dev, &dev_attr_bypass_charging);
+		ret = device_create_file(&oplus_chip->batt_psy->dev, &dev_attr_charging_enabled);
 	}
 
     return 0;

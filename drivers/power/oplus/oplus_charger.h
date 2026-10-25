@@ -113,7 +113,7 @@
 #define OPCHG_PWROFF_EMERGENCY_BATT_TEMP	850
 
 #define OPCHG_INPUT_CURRENT_LIMIT_CHARGER_MA	2000
-#define OPCHG_INPUT_CURRENT_LIMIT_USB_MA	500
+#define OPCHG_INPUT_CURRENT_LIMIT_USB_MA	1500
 #define OPCHG_INPUT_CURRENT_LIMIT_CDP_MA	1500
 #define OPCHG_INPUT_CURRENT_LIMIT_LED_MA	1200
 #define OPCHG_INPUT_CURRENT_LIMIT_CAMERA_MA	1000
@@ -699,6 +699,7 @@ struct oplus_chg_chip {
 	int mmi_chg;
 	int unwakelock_chg;
 	int stop_chg;
+	int bypass_chg;
 	int mmi_fastchg;
 	int boot_reason;
 	int boot_mode;
