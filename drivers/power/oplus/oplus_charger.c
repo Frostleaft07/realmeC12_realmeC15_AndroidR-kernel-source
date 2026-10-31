@@ -3679,7 +3679,9 @@ static void oplus_chg_set_charging_current(struct oplus_chg_chip *chip)
 	if (chip->bypass_chg) {
 		/* Bypass charging: power system directly, do not charge battery */
 		chip->charging_state = CHARGING_STATUS_FAIL;
-		chip->prop_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+		chip->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
+		if (chip->chg_ops && chip->chg_ops->charging_disable)
+			chip->chg_ops->charging_disable();
 		if (chip->chg_ops && chip->chg_ops->charging_current_write_fast)
 			chip->chg_ops->charging_current_write_fast(0);
 		return;
@@ -4134,6 +4136,9 @@ static void oplus_chg_check_ffc_temp_status(struct oplus_chg_chip *chip)
 
 void oplus_chg_turn_on_ffc1(struct oplus_chg_chip *chip)
 {
+	if (chip->bypass_chg) {
+		return;
+	}
 	if ((!chip->authenticate) ||(!chip->hmac)) {
 		return;
 	}
@@ -4192,6 +4197,9 @@ void oplus_chg_turn_on_ffc1(struct oplus_chg_chip *chip)
 
 void oplus_chg_turn_on_ffc2(struct oplus_chg_chip *chip)
 {
+	if (chip->bypass_chg) {
+		return;
+	}
 	if ((!chip->authenticate) ||(!chip->hmac)) {
 		return;
 	}
@@ -4263,6 +4271,10 @@ void oplus_chg_turn_on_charging(struct oplus_chg_chip *chip)
 	}
 
 	chip->chg_ops->hardware_init();
+	if (oplus_vooc_get_allow_reading() == true) {
+		chip->chg_ops->charger_unsuspend();
+		chip->chg_ops->charging_enable();
+	}
 	if (chip->stop_chg == 0
 			&& (chip->charger_type == POWER_SUPPLY_TYPE_USB
 				|| chip->charger_type == POWER_SUPPLY_TYPE_USB_CDP)) {
@@ -4360,6 +4372,10 @@ static int oplus_chg_check_suspend_or_disable(struct oplus_chg_chip *chip)
 static void oplus_chg_voter_charging_start(struct oplus_chg_chip *chip,
 					OPLUS_CHG_STOP_VOTER voter)
 {
+	if (chip->bypass_chg) {
+		/* Do not re-enable charging while bypass charging is active */
+		return;
+	}
 	chip->chging_on = true;
 	chip->stop_voter &= ~(int)voter;
 	oplus_chg_turn_on_charging(chip);
@@ -6397,6 +6413,11 @@ static void oplus_chg_update_ui_soc(struct oplus_chg_chip *chip)
 	unsigned long soc_reduce_margin = 0;
 	bool vbatt_too_low = false;
 	vbatt_lowerthan_3300mv = false;
+
+	if (chip->bypass_chg) {
+		chip->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
+		return;
+	}
 
 	if (chip->ui_soc == 100) {
 		soc_down_limit = SOC_SYNC_DOWN_RATE_300S;

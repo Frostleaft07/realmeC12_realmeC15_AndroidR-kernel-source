@@ -4224,15 +4224,39 @@ static ssize_t store_bypass_charging(struct device *dev, struct device_attribute
 	if (!g_oplus_chip)
 		return size;
 	if (kstrtouint(buf, 10, &val) == 0) {
+		if (val) {
+			if (!g_oplus_chip->charger_exist) {
+				pr_err("bypass_charging: charger not connected, cannot enable bypass\n");
+				return size;
+			}
+			pr_info("bypass_charging: enabled\n");
+		} else {
+			pr_info("bypass_charging: disabled\n");
+		}
 		g_oplus_chip->bypass_chg = !!val;
 		if (g_oplus_chip->bypass_chg) {
 			g_oplus_chip->charging_state = CHARGING_STATUS_FAIL;
-			g_oplus_chip->prop_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+			g_oplus_chip->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
+			g_oplus_chip->chging_on = false;
 			oplus_chg_turn_off_charging(g_oplus_chip);
+			if (g_oplus_chip->chg_ops && g_oplus_chip->chg_ops->charging_disable)
+				g_oplus_chip->chg_ops->charging_disable();
+			if (g_oplus_chip->chg_ops && g_oplus_chip->chg_ops->charging_current_write_fast)
+				g_oplus_chip->chg_ops->charging_current_write_fast(0);
 		} else {
 			g_oplus_chip->charging_state = CHARGING_STATUS_CCCV;
+			g_oplus_chip->chging_on = true;
+			g_oplus_chip->stop_chg = 1;
 			oplus_chg_turn_on_charging(g_oplus_chip);
+			if (g_oplus_chip->chg_ops) {
+				if (g_oplus_chip->chg_ops->charger_unsuspend)
+					g_oplus_chip->chg_ops->charger_unsuspend();
+				if (g_oplus_chip->chg_ops->charging_enable)
+					g_oplus_chip->chg_ops->charging_enable();
+			}
 		}
+		if (g_oplus_chip->batt_psy)
+			power_supply_changed(g_oplus_chip->batt_psy);
 	}
 	return size;
 }
@@ -4254,12 +4278,27 @@ static ssize_t store_charging_enabled(struct device *dev, struct device_attribut
 		g_oplus_chip->bypass_chg = !val;
 		if (g_oplus_chip->bypass_chg) {
 			g_oplus_chip->charging_state = CHARGING_STATUS_FAIL;
-			g_oplus_chip->prop_status = POWER_SUPPLY_STATUS_NOT_CHARGING;
+			g_oplus_chip->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
+			g_oplus_chip->chging_on = false;
 			oplus_chg_turn_off_charging(g_oplus_chip);
+			if (g_oplus_chip->chg_ops && g_oplus_chip->chg_ops->charging_disable)
+				g_oplus_chip->chg_ops->charging_disable();
+			if (g_oplus_chip->chg_ops && g_oplus_chip->chg_ops->charging_current_write_fast)
+				g_oplus_chip->chg_ops->charging_current_write_fast(0);
 		} else {
 			g_oplus_chip->charging_state = CHARGING_STATUS_CCCV;
+			g_oplus_chip->chging_on = true;
+			g_oplus_chip->stop_chg = 1;
 			oplus_chg_turn_on_charging(g_oplus_chip);
+			if (g_oplus_chip->chg_ops) {
+				if (g_oplus_chip->chg_ops->charger_unsuspend)
+					g_oplus_chip->chg_ops->charger_unsuspend();
+				if (g_oplus_chip->chg_ops->charging_enable)
+					g_oplus_chip->chg_ops->charging_enable();
+			}
 		}
+		if (g_oplus_chip->batt_psy)
+			power_supply_changed(g_oplus_chip->batt_psy);
 	}
 	return size;
 }
