@@ -4263,6 +4263,10 @@ void oplus_chg_turn_on_charging(struct oplus_chg_chip *chip)
 	}
 
 	chip->chg_ops->hardware_init();
+	if (oplus_vooc_get_allow_reading() == true) {
+		chip->chg_ops->charger_unsuspend();
+		chip->chg_ops->charging_enable();
+	}
 	if (chip->stop_chg == 0
 			&& (chip->charger_type == POWER_SUPPLY_TYPE_USB
 				|| chip->charger_type == POWER_SUPPLY_TYPE_USB_CDP)) {
