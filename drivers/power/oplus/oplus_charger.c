@@ -799,7 +799,7 @@ if (chip == NULL) {
 			} else {
 				chip->icharging = oplus_gauge_get_batt_current();
 			}
-			if (chip->bypass_chg)
+			if (chip->idle_chg)
 				chip->icharging = 0;
 			val->intval = chip->icharging;
 			break;
@@ -2015,7 +2015,7 @@ static void oplus_chg_show_ui_soc_decimal(struct work_struct *work)
 		chip->batt_fcc =  oplus_gauge_get_batt_fcc() * chip->vbatt_num;
 		chip->icharging = oplus_gauge_get_batt_current();
 	}
-	if (chip->bypass_chg)
+	if (chip->idle_chg)
 		chip->icharging = 0;
 	icharging = chip->icharging * (-1);
 
@@ -3676,8 +3676,8 @@ static void oplus_chg_set_charging_current(struct oplus_chg_chip *chip)
 {
 	int charging_current = OPLUS_CHG_DEFAULT_CHARGING_CURRENT;
 
-	if (chip->bypass_chg) {
-		/* Bypass charging: power system directly, do not charge battery */
+	if (chip->idle_chg) {
+		/* Idle charging: do not charge battery */
 		chip->charging_state = CHARGING_STATUS_FAIL;
 		chip->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
 		if (chip->chg_ops && chip->chg_ops->charging_disable)
@@ -4136,7 +4136,7 @@ static void oplus_chg_check_ffc_temp_status(struct oplus_chg_chip *chip)
 
 void oplus_chg_turn_on_ffc1(struct oplus_chg_chip *chip)
 {
-	if (chip->bypass_chg) {
+	if (chip->idle_chg) {
 		return;
 	}
 	if ((!chip->authenticate) ||(!chip->hmac)) {
@@ -4197,7 +4197,7 @@ void oplus_chg_turn_on_ffc1(struct oplus_chg_chip *chip)
 
 void oplus_chg_turn_on_ffc2(struct oplus_chg_chip *chip)
 {
-	if (chip->bypass_chg) {
+	if (chip->idle_chg) {
 		return;
 	}
 	if ((!chip->authenticate) ||(!chip->hmac)) {
@@ -4257,7 +4257,7 @@ void oplus_chg_turn_on_ffc2(struct oplus_chg_chip *chip)
 
 void oplus_chg_turn_on_charging(struct oplus_chg_chip *chip)
 {
-	if (chip->bypass_chg) {
+	if (chip->idle_chg) {
 		return;
 	}
 	if (!chip->authenticate) {
@@ -4372,8 +4372,8 @@ static int oplus_chg_check_suspend_or_disable(struct oplus_chg_chip *chip)
 static void oplus_chg_voter_charging_start(struct oplus_chg_chip *chip,
 					OPLUS_CHG_STOP_VOTER voter)
 {
-	if (chip->bypass_chg) {
-		/* Do not re-enable charging while bypass charging is active */
+	if (chip->idle_chg) {
+		/* Do not re-enable charging while idle charging is active */
 		return;
 	}
 	chip->chging_on = true;
@@ -5794,7 +5794,7 @@ static void oplus_chg_get_battery_data(struct oplus_chg_chip *chip)
 		chip->batt_volt_max = oplus_gauge_get_prev_batt_mvolts_2cell_max();
 		chip->batt_volt_min = oplus_gauge_get_prev_batt_mvolts_2cell_min();
 		chip->icharging = oplus_gauge_get_prev_batt_current();
-		if (chip->bypass_chg)
+		if (chip->idle_chg)
 			chip->icharging = 0;
 		chip->temperature = oplus_chg_match_temp_for_chging();
 		chip->soc = oplus_gauge_get_prev_batt_soc();
@@ -5820,7 +5820,7 @@ static void oplus_chg_get_battery_data(struct oplus_chg_chip *chip)
 		chip->batt_volt_max = oplus_gauge_get_batt_mvolts_2cell_max();
 		chip->batt_volt_min = oplus_gauge_get_batt_mvolts_2cell_min();
 		chip->icharging = oplus_gauge_get_batt_current();
-		if (chip->bypass_chg)
+		if (chip->idle_chg)
 			chip->icharging = 0;
 		chip->temperature = oplus_chg_match_temp_for_chging();
 		chip->soc = oplus_gauge_get_batt_soc();
@@ -6414,7 +6414,7 @@ static void oplus_chg_update_ui_soc(struct oplus_chg_chip *chip)
 	bool vbatt_too_low = false;
 	vbatt_lowerthan_3300mv = false;
 
-	if (chip->bypass_chg) {
+	if (chip->idle_chg) {
 		chip->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
 		return;
 	}

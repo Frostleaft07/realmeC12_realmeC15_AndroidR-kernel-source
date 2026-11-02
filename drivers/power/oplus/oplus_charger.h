@@ -699,7 +699,7 @@ struct oplus_chg_chip {
 	int mmi_chg;
 	int unwakelock_chg;
 	int stop_chg;
-	int bypass_chg;
+	int idle_chg;
 	int mmi_fastchg;
 	int boot_reason;
 	int boot_mode;

@@ -4211,14 +4211,14 @@ static ssize_t store_StartCharging_Test(struct device *dev,struct device_attribu
 }
 static DEVICE_ATTR(StartCharging_Test, 0664, show_StartCharging_Test, store_StartCharging_Test);
 
-static ssize_t show_bypass_charging(struct device *dev, struct device_attribute *attr, char *buf)
+static ssize_t show_idle_charging(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	if (!g_oplus_chip)
 		return sprintf(buf, "0\n");
-	return sprintf(buf, "%d\n", g_oplus_chip->bypass_chg);
+	return sprintf(buf, "%d\n", g_oplus_chip->idle_chg);
 }
 
-static ssize_t store_bypass_charging(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
+static ssize_t store_idle_charging(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
 {
 	unsigned int val = 0;
 	if (!g_oplus_chip)
@@ -4226,15 +4226,15 @@ static ssize_t store_bypass_charging(struct device *dev, struct device_attribute
 	if (kstrtouint(buf, 10, &val) == 0) {
 		if (val) {
 			if (!g_oplus_chip->charger_exist) {
-				pr_err("bypass_charging: charger not connected, cannot enable bypass\n");
+				pr_err("idle_charging: charger not connected, cannot enable idle charging\n");
 				return size;
 			}
-			pr_info("bypass_charging: enabled\n");
+			pr_info("idle_charging: enabled\n");
 		} else {
-			pr_info("bypass_charging: disabled\n");
+			pr_info("idle_charging: disabled\n");
 		}
-		g_oplus_chip->bypass_chg = !!val;
-		if (g_oplus_chip->bypass_chg) {
+		g_oplus_chip->idle_chg = !!val;
+		if (g_oplus_chip->idle_chg) {
 			g_oplus_chip->charging_state = CHARGING_STATUS_FAIL;
 			g_oplus_chip->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
 			g_oplus_chip->chging_on = false;
@@ -4260,13 +4260,13 @@ static ssize_t store_bypass_charging(struct device *dev, struct device_attribute
 	}
 	return size;
 }
-static DEVICE_ATTR(bypass_charging, 0664, show_bypass_charging, store_bypass_charging);
+static DEVICE_ATTR(idle_charging, 0664, show_idle_charging, store_idle_charging);
 
 static ssize_t show_charging_enabled(struct device *dev, struct device_attribute *attr, char *buf)
 {
 	if (!g_oplus_chip)
 		return sprintf(buf, "1\n");
-	return sprintf(buf, "%d\n", g_oplus_chip->bypass_chg ? 0 : 1);
+	return sprintf(buf, "%d\n", g_oplus_chip->idle_chg ? 0 : 1);
 }
 
 static ssize_t store_charging_enabled(struct device *dev, struct device_attribute *attr, const char *buf, size_t size)
@@ -4275,8 +4275,8 @@ static ssize_t store_charging_enabled(struct device *dev, struct device_attribut
 	if (!g_oplus_chip)
 		return size;
 	if (kstrtouint(buf, 10, &val) == 0) {
-		g_oplus_chip->bypass_chg = !val;
-		if (g_oplus_chip->bypass_chg) {
+		g_oplus_chip->idle_chg = !val;
+		if (g_oplus_chip->idle_chg) {
 			g_oplus_chip->charging_state = CHARGING_STATUS_FAIL;
 			g_oplus_chip->prop_status = POWER_SUPPLY_STATUS_DISCHARGING;
 			g_oplus_chip->chging_on = false;
@@ -4613,7 +4613,7 @@ static int oplus_charger_probe(struct platform_device *pdev)
 	if (IS_ERR(oplus_chip->batt_psy) == 0) {
 		ret = device_create_file(&oplus_chip->batt_psy->dev, &dev_attr_StopCharging_Test);//stop charging
 		ret = device_create_file(&oplus_chip->batt_psy->dev, &dev_attr_StartCharging_Test);
-		ret = device_create_file(&oplus_chip->batt_psy->dev, &dev_attr_bypass_charging);
+		ret = device_create_file(&oplus_chip->batt_psy->dev, &dev_attr_idle_charging);
 		ret = device_create_file(&oplus_chip->batt_psy->dev, &dev_attr_charging_enabled);
 	}
 
