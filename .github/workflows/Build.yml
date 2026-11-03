@@ -8,33 +8,6 @@ on:
         required: true
         default: '4.19-upstream'
         type: string
-        
-      kernelsu_variant:
-        description: 'KernelSU variant'
-        required: true
-        type: choice
-        default: 'SukiSU-Ultra'
-        options:
-          - 'SukiSU-Ultra'
-          - 'KernelSU-Next'
-          - 'KernelSU'
-          - 'None'
-      sukisu_branch:
-        description: 'sukisu branch'
-        required: true
-        default: 'nongki'
-        type: choice
-        options:
-          - nongki
-          - susfs-main
-      kpm:
-        description: 'build dengan KPM (hanya SUKISU)'
-        required: true
-        type: choice
-        default: 'yes'
-        options:
-          - 'yes'
-          - 'no'
       localversion:
         description: 'Custom LOCALVERSION (e.g., -MyKernel)'
         required: true
@@ -60,14 +33,6 @@ on:
         required: true
         default: 'Asia/Jakarta'
         type: string
-      hook:
-        description: 'hook manual/tracepoint (hanya SUKISU)'
-        required: true
-        default: 'manual'
-        type: choice
-        options:
-          - manual
-          - tracepoint
 
 env:
   KBUILD_BUILD_USER: ${{ github.event.inputs.build_user }}
@@ -85,52 +50,12 @@ jobs:
         ref: ${{ github.event.inputs.branch }}
         fetch-depth: 1
 
-    - name: Setup SukiSU/KSU/KSUN
-      run: |
-        KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
-        KPM="${{ github.event.inputs.kpm }}"
-
-        if [ "$KSU_VARIANT" == "SukiSU-Ultra" ]; then
-          BRANCH="${{ github.event.inputs.sukisu_branch }}"
-          HOOK="${{ github.event.inputs.hook }}"
-          DEFCONFIG="arch/arm64/configs/${{ github.event.inputs.defconfig }}"
-
-        if [ "$BRANCH" == "susfs-main" ]; then
-          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s susfs-main
-        elif [ "$BRANCH" == "nongki" ]; then
-          curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/main/kernel/setup.sh" | bash -s nongki
-        fi
-
-        if [ "$HOOK" == "manual" ]; then
-          echo "CONFIG_KSU_MANUAL_HOOK=y" >> "$DEFCONFIG"
-        elif [ "$HOOK" == "tracepoint" ]; then
-          echo "CONFIG_KSU_TRACEPOINT_HOOK=y" >> "$DEFCONFIG"
-        fi
-
-        if [ "$KPM" == "yes" ]; then
-          echo "CONFIG_KPM=y" >> "$DEFCONFIG"
-        elif [ "$KPM" == "no" ]; then
-          echo "Non KPM"
-        fi
-
-        elif [ "$KSU_VARIANT" == "KernelSU-Next" ]; then
-          curl -LSs "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" | bash -
-          wget https://github.com/Frostleaft07/realmeC12_realmeC15_AndroidR-kernel-source/releases/download/Files/0001-Revert-kernelsu-set-ifdef-ke-if-defined-xxxx.patch
-          patch -p1< 0001-Revert-kernelsu-set-ifdef-ke-if-defined-xxxx.patch
-
-        elif [ "$KSU_VARIANT" == "KernelSU" ]; then
-          curl -LSs "https://raw.githubusercontent.com/tiann/KernelSU/main/kernel/setup.sh" | bash -s v0.9.5
-          wget https://github.com/Frostleaft07/realmeC12_realmeC15_AndroidR-kernel-source/releases/download/Files/0001-Revert-kernelsu-set-ifdef-ke-if-defined-xxxx.patch
-          patch -p1< 0001-Revert-kernelsu-set-ifdef-ke-if-defined-xxxx.patch
-        else
-          echo "Build tanpa KernelSU"
-        fi
-
     - name: Setup Environment
       run: |
         echo "Build User: $KBUILD_BUILD_USER"
         echo "Build Host: $KBUILD_BUILD_HOST"
         echo "DATE=$(date +%Y-%m-%d-%H-%M-%S)" >> $GITHUB_ENV
+        echo "LAST_COMMIT=$(git log -1 --pretty='%h - %s (%ci)')" >> $GITHUB_ENV
         git clone --depth=1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/aarch64/aarch64-linux-android-4.9 -b android11-release
         echo "$GITHUB_WORKSPACE/clang/bin:$GITHUB_WORKSPACE/aarch64-linux-android-4.9/bin:/usr/bin:/bin" >> $GITHUB_PATH
         sed -i -E 's/\bpython2\b ?//g; s/  +/ /g' package
@@ -158,43 +83,17 @@ jobs:
           READELF=llvm-readelf \
           CROSS_COMPILE=aarch64-linux-android- \
           CLANG_TRIPLE=aarch64-linux-gnu-
-    
-    - name: patch KPM
-      run: |
-        KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
-        KPM_ENABLE="${{ github.event.inputs.kpm }}"
-
-        if [ "$KSU_VARIANT" == "SukiSU-Ultra" ] && [ "$KPM_ENABLE" == "yes" ]; then
-          echo "patch file Image..."
-          cd "/home/runner/out/arch/arm64/boot"
-          wget https://github.com/SukiSU-Ultra/SukiSU_patch/raw/refs/heads/main/kpm/patch_linux
-          chmod +x patch_linux
-          ./patch_linux Image
-        if [ $? -eq 0 ]; then
-          rm -f Image
-          mv oImage Image
-          gzip -9 -c Image > Image.gz
-          echo "Done"
-        else
-          echo "Failed"
-        fi
-        else 
-          echo "tanpa KPM"
-        fi
-      continue-on-error: true
 
     - name: anykernel ~ zipping
       run: |
-         KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
-         ZIP=Endfield_${KSU_VARIANT}_${{ env.DATE }}_RMX2180_RUI2.zip
+         ZIP=Endfield_${{ env.DATE }}_RMX2180_RUI2.zip
          git clone https://github.com/Frostleaft07/AnyKernel3 -b mastah ~/any/
          mv ~/out/arch/arm64/boot/Image.gz ~/any/
          cd ~/any/ ; zip -r9 $ZIP *
 
     - name: Upload to Telegram
       run: |
-         KSU_VARIANT="${{ github.event.inputs.kernelsu_variant }}"
-         ZIP=Endfield_${KSU_VARIANT}_${{ env.DATE }}_RMX2180_RUI2.zip
+         ZIP=Endfield_${{ env.DATE }}_RMX2180_RUI2.zip
          FILE_PATH="/home/runner/any/$ZIP"
          curl -s -X POST "https://api.telegram.org/bot${{ secrets.TG_TOKEN }}/sendDocument" \
          -F chat_id="${{ secrets.CHAT_ID }}" \
@@ -208,12 +107,9 @@ jobs:
       with:
         files: |
           /home/runner/any/*.zip
-        name: ${{ github.event.inputs.kernelsu_variant }}-${{ github.run_id }}
+        name: Endfield-${{ github.run_id }}
         tag_name: ${{ github.run_id }}
         body: |
-          Variant: ${{ github.event.inputs.kernelsu_variant }}
-          sukisubranch: ${{ github.event.inputs.sukisu_branch }}
-          config: ${{ github.event.inputs.defconfig }}
-          KPM: ${{ github.event.inputs.kpm }}
-          Hook: ${{ github.event.inputs.hook }}
-          branch: ${{ github.event.inputs.branch }}
+          Commit: ${{ env.LAST_COMMIT }}
+          Config: ${{ github.event.inputs.defconfig }}
+          Branch: ${{ github.event.inputs.branch }}
