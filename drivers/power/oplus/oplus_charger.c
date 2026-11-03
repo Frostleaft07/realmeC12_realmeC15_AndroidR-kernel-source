@@ -5864,10 +5864,13 @@ static void oplus_chg_get_battery_data(struct oplus_chg_chip *chip)
 			goto next;
 		}
 		ui_soc_cp_flag = 1;
-		if( chip->chg_ops->get_rtc_soc() > 100 || (chip->chg_ops->get_rtc_soc() <= 0)){
-			soc_load = chip->soc;
-		} else {
-			soc_load = chip->chg_ops->get_rtc_soc();
+		{
+			int rtc_soc = chip->chg_ops->get_rtc_soc();
+			if (rtc_soc > 100 || rtc_soc <= 0 || abs(rtc_soc - chip->soc) > 20) {
+				soc_load = chip->soc;
+			} else {
+				soc_load = rtc_soc;
+			}
 		}
 		chip->soc_load = soc_load;
 		if(chip->smooth_switch)
