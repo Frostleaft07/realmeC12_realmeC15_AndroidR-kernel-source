@@ -1718,6 +1718,20 @@ static struct ctl_table vm_table[] = {
 		.extra1		= &one,
 		.extra2		= &four,
 	},
+	{
+		.procname	= "auto_clear_ram",
+		.data		= &sysctl_auto_clear_ram,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+	},
+	{
+		.procname	= "auto_clear_ram_interval",
+		.data		= &sysctl_auto_clear_ram_interval,
+		.maxlen		= sizeof(int),
+		.mode		= 0644,
+		.proc_handler	= proc_dointvec,
+	},
 #ifdef CONFIG_COMPACTION
 	{
 		.procname	= "compact_memory",
