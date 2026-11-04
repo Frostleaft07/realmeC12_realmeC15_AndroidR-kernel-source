@@ -6640,6 +6640,23 @@ static void oplus_chg_battery_update_status(struct oplus_chg_chip *chip)
 	usb_update(chip);
 #endif
 	battery_update(chip);
+
+	/* Auto-disable idle charging when charger is unplugged */
+	if (chip->idle_chg && !chip->charger_exist) {
+		chip->idle_chg = 0;
+		chip->charging_state = CHARGING_STATUS_CCCV;
+		chip->chging_on = true;
+		chip->stop_chg = 1;
+		oplus_chg_turn_on_charging(chip);
+		if (chip->chg_ops) {
+			if (chip->chg_ops->charger_unsuspend)
+				chip->chg_ops->charger_unsuspend();
+			if (chip->chg_ops->charging_enable)
+				chip->chg_ops->charging_enable();
+		}
+		if (chip->batt_psy)
+			power_supply_changed(chip->batt_psy);
+	}
 }
 
 #define RESET_MCU_DELAY_30S		6
