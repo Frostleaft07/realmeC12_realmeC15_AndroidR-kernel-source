@@ -6,7 +6,7 @@ on:
       branch:
         description: 'select branch or id commit'
         required: true
-        default: '4.19-upstream'
+        default: 'endfield'
         type: string
       localversion:
         description: 'Custom LOCALVERSION (e.g., -MyKernel)'
