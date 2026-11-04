@@ -528,7 +528,9 @@ static int axiAllocHifMem(struct platform_device *pdev,
 	       &grMem.pucRsvMemBase,
 	       &grMem.pucRsvMemVirBase);
 
+#if CFG_MTK_ANDROID_EMI
 	kalSetDrvEmiMpuProtection(grMem.pucRsvMemBase, 0, grMem.u4RsvMemSize);
+#endif
 
 	for (u4Idx = 0; u4Idx < NUM_OF_TX_RING; u4Idx++) {
 		if (!axiAllocRsvMem(TX_RING_SIZE * TXD_SIZE,
