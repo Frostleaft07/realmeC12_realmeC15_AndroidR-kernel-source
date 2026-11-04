@@ -5385,6 +5385,7 @@ static int initWlan(void)
 	gConEmiPhyBase = (phys_addr_t)ptr;
 #endif
 
+#if CFG_MTK_ANDROID_EMI
 	gConEmiPhyBaseFinal = gConEmiPhyBase;
 	gConEmiSizeFinal = gConEmiSize;
 
@@ -5392,6 +5393,7 @@ static int initWlan(void)
 	conninfra_get_phy_addr(
 		(unsigned int *)&gConEmiPhyBaseFinal,
 		(unsigned int *)&gConEmiSizeFinal);
+#endif
 #endif
 
 	DBGLOG(INIT, INFO, "initWlan\n");
@@ -5443,7 +5445,7 @@ static int initWlan(void)
 #endif
 	ret = ((glRegisterBus(wlanProbe,
 			      wlanRemove) == WLAN_STATUS_SUCCESS) ? 0 : -EIO);
-#ifdef CONFIG_MTK_EMI
+#if defined(CONFIG_MTK_EMI) && (CFG_MTK_ANDROID_EMI == 1)
 	/* Set WIFI EMI protection to consys permitted on system boot up */
 	kalSetEmiMpuProtection(gConEmiPhyBaseFinal, true);
 #endif
